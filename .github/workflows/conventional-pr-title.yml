@@ -1,0 +1,31 @@
+name: Conventional PR Title
+
+# Source workflow: reconciliation copies this trusted file into every active
+# managed repository before requiring its `Conventional PR title` status check.
+# PR titles must follow Conventional Commits (https://www.conventionalcommits.org/).
+# For client and internal repositories, repo_defaults.merge_commit_messages in
+# config/defaults.yaml makes the validated title the default merge commit title.
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: none
+  pull-requests: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  conventional-pr-title:
+    name: Conventional PR title
+    # This repository is intentionally outside management scope
+    # (config/management-exclusions.yaml) — the check runs on managed repos only.
+    if: github.repository != 'AgicCompany/org-github-management'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50  # v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
