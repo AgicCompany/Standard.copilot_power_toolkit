@@ -1,0 +1,92 @@
+# CI for the BASELINE ITSELF - not copied into target projects (see alwaysExcluded in
+# tools/baseline-profiles.json). Target projects have no tools/ directory, so this workflow would
+# fail there immediately.
+#
+# Dormant until .github_general is a git repository with a GitHub remote.
+#
+# Written to follow instructions/github-actions.instructions.md - it is the first consumer of its
+# own rules, which is the point.
+name: Lint baseline
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+  workflow_dispatch:
+
+# Explicit and narrow. An absent permissions block inherits the repository default, which may be
+# read-write on everything.
+permissions:
+  contents: read
+
+# Without this, every push to a PR leaves its predecessor running.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # pwsh is preinstalled on GitHub-hosted Ubuntu runners. Note this is PowerShell 7 - the
+      # Copilot host runs the hook scripts under Windows PowerShell 5.1, where native stderr becomes
+      # a terminating error. A green run here does NOT prove the hooks work in the host; that is what
+      # the 5.1 job below is for.
+      - name: Run the baseline linter
+        shell: pwsh
+        run: ./tools/lint-baseline.ps1
+
+      - name: Check GOVERNANCE_MATRIX.md is current
+        shell: pwsh
+        run: ./tools/generate-governance-matrix.ps1 -Check
+
+  # The hooks run under Windows PowerShell 5.1 in the real host, and 5.1 fails in ways 7.x does not:
+  # native stderr becomes a terminating ErrorRecord even on exit code 0. Three separate hook outages
+  # came from exactly that. Parsing every script under 5.1 is cheap insurance.
+  parse-hooks-under-windows-powershell:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Parse every hook script under Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $bad = @()
+          Get-ChildItem hooks/scripts/*.ps1 | ForEach-Object {
+            $errs = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
+            $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+            $hasBom = ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)
+            if ($errs.Count -gt 0) { $bad += "$($_.Name): $($errs.Count) parse error(s)" }
+            if (-not $hasBom)     { $bad += "$($_.Name): missing UTF-8 BOM (5.1 reads BOM-less files as cp1252)" }
+          }
+          if ($bad.Count -gt 0) { $bad | ForEach-Object { Write-Host "::error::$_" }; exit 1 }
+          Write-Host "All hook scripts parse cleanly with a BOM."
+
+  # Every guard ships two scripts and only the PowerShell one was ever executed - the bash mirrors
+  # were syntax-checked at best. On any host with bash on PATH, and under Copilot CLI, the mirror is
+  # the script that actually runs, so half of every guard was shipping unverified. This job runs the
+  # same discrimination cases against the bash side.
+  #
+  # ubuntu on purpose: the guards fail open when jq is absent, and Git Bash on Windows usually has no
+  # jq - so a Windows run of this probe would pass vacuously, which is worse than not running it.
+  probe-hook-guards-under-bash:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Confirm jq is present
+        run: jq --version
+
+      - name: Syntax-check every bash hook script
+        run: |
+          bad=0
+          for f in hooks/scripts/*.sh; do
+            bash -n "$f" || { echo "::error::$f: parse error"; bad=1; }
+          done
+          exit $bad
+
+      - name: Run the bash guard discrimination probe
+        run: bash tools/probe-hooks.sh

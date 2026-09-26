@@ -1,0 +1,20 @@
+# Scoped to .github/hooks/ in the target project. Ships WITH the hooks, because the hooks are
+# useless without it.
+#
+# The baseline's own root .gitattributes is in `alwaysExcluded` and is never copied into a target,
+# so before this file existed a project inherited 15 bash hooks and none of the line-ending
+# protection that keeps them runnable. `core.autocrlf=true` is the Windows default, so git rewrites
+# these to CRLF on checkout, the shebang becomes "#!/usr/bin/env bash\r", and the kernel looks for an
+# interpreter literally named "bash\r". Every bash hook then dies with
+# "bad interpreter: No such file or directory".
+#
+# It does not bite on Windows, where the .ps1 variants run — it bites the colleague who clones on
+# macOS or Linux, or CI, which is the worst possible place to discover it.
+#
+# This file deliberately scopes only to hooks/. It sets no policy for the project's own source.
+*.sh text eol=lf
+
+# PowerShell hooks are ASCII with a UTF-8 BOM. Windows PowerShell 5.1 — which the Copilot host uses —
+# reads BOM-less files as cp1252, and the mojibake breaks string terminators. Git leaves the BOM
+# alone, but pin the endings so a clone matches the bytes that were actually tested.
+*.ps1 text eol=lf

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "//events": "Uses PascalCase PostToolUse ONLY. Verified live in VS Code Copilot Chat: PostToolUse fires, camelCase postToolUse does NOT. Both were registered briefly, but JSON keys differing only by case break PowerShell ConvertFrom-Json (and likely the host parser too), so only the verified-working name is used. If running under Copilot CLI, which documents camelCase, change this key to postToolUse. See docs/reference/hook-payloads.md.",
+  "//": "NO matcher on purpose - see vite-env-guard.json. Matchers filter on the tool NAME, which",
+  "//2": "differs between hosts and versions; a mismatch silently disables the hook. The script filters",
+  "//3": "on the target file extension instead, which is stable.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/lint-fix-on-edit.sh",
+        "powershell": ".github/hooks/scripts/lint-fix-on-edit.ps1",
+        "cwd": ".",
+        "env": {
+          "LINT_FIX_PRETTIER": "true"
+        },
+        "timeoutSec": 30
+      }
+    ]
+  }
+}

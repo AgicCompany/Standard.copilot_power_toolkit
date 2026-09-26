@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "//": "NO matcher on purpose. A host-level matcher filters on the tool NAME, and tool names differ",
+  "//2": "between hosts (Copilot CLI vs VS Code Chat) and across versions. A matcher that doesn't match",
+  "//3": "silently disables the hook - confirmed live: this guard had matcher 'edit'/'create' and never",
+  "//4": "fired in VS Code Chat while tool-guardian, which has no matcher, fired fine. For a security",
+  "//5": "control, fail-open-by-typo is unacceptable. The script filters on the target PATH instead, so",
+  "//6": "it works regardless of what the write tool is called.",
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/guard-vite-env.sh",
+        "powershell": ".github/hooks/scripts/guard-vite-env.ps1",
+        "cwd": ".",
+        "env": {
+          "VITE_ENV_GUARD_MODE": "block"
+        },
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

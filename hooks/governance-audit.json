@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "//events": "Event names are HOST-SPECIFIC. Verified live in VS Code Copilot Chat by registering both casings and observing which fired: PostToolUse fires, postToolUse does NOT. sessionEnd and SessionEnd never fire (even after a full VS Code quit); Stop fires after every completed turn. camelCase sessionStart/preToolUse/userPromptSubmitted do fire. Register BOTH spellings so the hook works on either host - a duplicate fire is harmless, a missed one is silent. See docs/reference/hook-payloads.md.",
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/audit-session-start.sh",
+        "powershell": ".github/hooks/scripts/audit-session-start.ps1",
+        "cwd": ".",
+        "timeoutSec": 5
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/audit-session-end.sh",
+        "powershell": ".github/hooks/scripts/audit-session-end.ps1",
+        "cwd": ".",
+        "timeoutSec": 5
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/audit-prompt.sh",
+        "powershell": ".github/hooks/scripts/audit-prompt.ps1",
+        "cwd": ".",
+        "env": {
+          "GOVERNANCE_LEVEL": "standard",
+          "BLOCK_ON_THREAT": "false"
+        },
+        "timeoutSec": 10
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/audit-session-end.sh",
+        "powershell": ".github/hooks/scripts/audit-session-end.ps1",
+        "cwd": ".",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

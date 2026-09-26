@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "//": "NO matcher, and no toolName gate - sessionStart carries neither. The script decides whether",
+  "//2": "to speak by looking at the file itself, so it is silent in every project that has already",
+  "//3": "filled the template or never copied it.",
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/check-project-context.sh",
+        "powershell": ".github/hooks/scripts/check-project-context.ps1",
+        "cwd": ".",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}
