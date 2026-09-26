@@ -131,7 +131,7 @@ foreach ($sec in $sections) {
 [void]$sb.AppendLine('| `SAFETY_GUARDRAILS.md` | Blocked actions, confirmation-required actions, secret handling |')
 [void]$sb.AppendLine('| `docs/WORKFLOW_AUTHORITY.md` | Canonical branching/release model (Gitflow) |')
 [void]$sb.AppendLine('| `docs/mcp-servers.md` | MCP server config and known gaps |')
-[void]$sb.AppendLine('| `docs/project-memory.md` | Cross-session durable memory store |')
+[void]$sb.AppendLine('| `.github/docs/project-memory.md` | Cross-session durable memory store, in a project. Seeded once from `docs/project-memory.template.md`, then project-owned |')
 [void]$sb.AppendLine()
 
 $generated = $sb.ToString() -replace "`r`n", "`n"

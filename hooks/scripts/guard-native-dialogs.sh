@@ -32,6 +32,12 @@ guard_log() {
 
 [[ "${SKIP_DIALOG_GUARD:-}" == "true" ]] && exit 0
 
+# Only a Code App needs this. There confirm() runs inside an iframe sandboxed without allow-modals
+# and silently returns false - a functional failure, which is what earned a blocking hook. In a
+# plain React app confirm() works; preferring the UI library's dialog there is a convention the
+# instruction layer carries. Code Apps are recognised as dataverse-schema-drift does it.
+[[ -f "${POWER_CONFIG:-power.config.json}" ]] || { guard_log not_a_code_app "" "" "n/a"; exit 0; }
+
 command -v jq >/dev/null 2>&1 || { guard_log no_jq "" "" "n/a"; exit 0; }
 
 raw="$(cat)"

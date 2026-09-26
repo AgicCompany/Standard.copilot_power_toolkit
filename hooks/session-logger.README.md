@@ -1,20 +1,30 @@
 ---
 name: 'Session Logger'
-description: 'Logs all Copilot coding agent session activity for audit and analysis'
+description: 'Logs metadata when Copilot sessions start, each turn completes, and a prompt is submitted - timestamps, working directory and event names; no prompt text and no tool calls'
 tags: ['logging', 'audit', 'analytics']
 ---
 
 # Session Logger Hook
 
-Comprehensive logging for GitHub Copilot coding agent sessions, tracking session starts, ends, and
-user prompts for audit trails and usage analytics.
+Lightweight metadata logging for Copilot sessions: when they start, when each turn completes, and
+when a prompt is submitted. Useful for usage timelines, not as an audit of what an agent did.
 
 ## Overview
 
-This hook provides detailed logging of Copilot coding agent activity:
-- Session start/end times with working directory context
-- User prompt submission events
-- Configurable log levels
+What it records, and nothing more:
+
+| Event | Log line |
+|---|---|
+| Session start | timestamp, working directory |
+| Each completed turn (`Stop`) | timestamp, event name |
+| Prompt submitted | timestamp, event name, `LOG_LEVEL` label — **not the prompt text** |
+
+It does **not** log tool calls, tool arguments, or anything the model wrote. Do not rely on it as an
+audit of what an agent *did* — for that, see the logs written by `tool-guardian` and
+`governance-audit`.
+
+`sessionEnd` is registered too, but in VS Code Copilot Chat it never fires (see
+`docs/reference/hook-payloads.md`); `Stop` is what records turn completion.
 
 ## Installation
 
@@ -50,6 +60,6 @@ Session events are written to `logs/copilot/session.log` and prompt events to
 
 ## Privacy & Security
 
-- Add `logs/` to `.gitignore` to avoid committing session data
+- `logs/copilot/.gitignore` is created automatically on first run, so logs stay out of git — delete it only if you deliberately want to commit them
 - Set `SKIP_LOGGING=true` to disable
 - Logs are stored locally only

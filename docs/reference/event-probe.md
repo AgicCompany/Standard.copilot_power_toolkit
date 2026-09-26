@@ -20,6 +20,21 @@ Untested hypotheses:
 3. `agentStop` fires when a turn completes — which would be a **better** trigger than session end
    anyway, since the gate would run after each change rather than once at the very end.
 
+### Results — recorded in `docs/reference/hook-payloads.md`
+
+This probe has been run. Read the results before registering anything new:
+
+1. **False.** `sessionEnd` never fires in VS Code Copilot Chat — not on a window reload and not on a
+   full VS Code quit.
+2. **Partly true.** **`Stop` (PascalCase) fires after every completed turn**, and is where the
+   end-of-change hooks now run. `SessionEnd` does not fire either. Casing matters for tool events too:
+   `PostToolUse` fires, camelCase `postToolUse` does not.
+3. **Not re-probed.** `Stop` already covers the end-of-turn use case, so whether `agentStop` fires on
+   this host has not been tested.
+
+The probe below is kept for re-testing on a new host or Copilot version, not because these questions
+are still open.
+
 ## The probe
 
 `.github/hooks/event-probe.json` — registers every plausible event name, both casings:

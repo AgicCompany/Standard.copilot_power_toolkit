@@ -10,8 +10,8 @@ This guide explains how to reuse this template package across repositories.
 ## Profiles
 
 `apply-baseline.ps1` copies a **profile-selected subset** of the baseline. A profile decides what
-gets copied; it never deletes anything from `.github_general`. Assets belonging to no profile stay
-here for future project types — they just aren't pushed into projects that have no use for them.
+gets copied; it never modifies the baseline itself. An asset that fits no profile ships to nobody,
+so it does not stay in the baseline — see `AGENTS.md`.
 
 ```powershell
 pwsh ./.github_general/tools/apply-baseline.ps1 -ListProfiles
@@ -22,7 +22,7 @@ pwsh ./.github_general/tools/apply-baseline.ps1 -ListProfiles
 | `react-vite` | React + TypeScript + Vite web app — Tailwind v4 + shadcn/ui, TanStack Query, react-hook-form + Zod, Vitest, Playwright |
 | `power-apps-code-app` | **Default.** Everything in `react-vite`, plus Dataverse, Power Platform, Canvas parity, App Insights |
 | `baseline-authoring` | Working on this baseline itself, or another Copilot config repo |
-| `full` | Everything, including C#/.NET, Bicep, ADO pipelines, Azure and docx assets |
+| `full` | Everything: the union of every profile, plus the two MCP-authoring instructions no profile ships yet |
 
 ## What This Does
 - Copies the selected profile's assets from `.github_general` into the target `.github/`

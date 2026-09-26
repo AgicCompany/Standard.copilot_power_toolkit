@@ -120,6 +120,12 @@ expect_guard "Next prefix, URL value allowed"      guard-vite-env.sh ALLOW "$(wr
 expect_guard "unprefixed secret ignored"           guard-vite-env.sh ALLOW "$(write '.env' 'DATABASE_PASSWORD=hunter2')"                "PUBLIC_ENV_PREFIXES=VITE_,NEXT_PUBLIC_"
 
 echo "--- guard-native-dialogs.sh ---"
+# The guard enforces only in a Code App, recognised by power.config.json (or $POWER_CONFIG).
+expect_guard "not a Code App, window.confirm"      guard-native-dialogs.sh ALLOW "$(write 'src/App.tsx' 'if (window.confirm("x")) y()')" "POWER_CONFIG=$WORK/absent.json"
+mkdir -p "$WORK/dir-config/power.config.json"
+expect_guard "power.config.json is a directory"     guard-native-dialogs.sh ALLOW "$(write 'src/App.tsx' 'if (window.confirm("x")) y()')" "POWER_CONFIG=$WORK/dir-config/power.config.json"
+printf '{}' > "$WORK/power.config.json"
+export POWER_CONFIG="$WORK/power.config.json"
 expect_guard "terminal write .tsx, window.confirm" guard-native-dialogs.sh DENY  "$(term "Set-Content -Path src/App.tsx -Value 'if (window.confirm(1)) x()'")"
 expect_guard "terminal write .ts, alert("          guard-native-dialogs.sh DENY  "$(term 'echo "alert(1)" > src/n.ts')"
 expect_guard "terminal write .tsx, benign"         guard-native-dialogs.sh ALLOW "$(term "Set-Content -Path src/App.tsx -Value 'export const A = 1'")"
@@ -130,6 +136,7 @@ expect_guard "write .tsx, setPrompt( identifier"   guard-native-dialogs.sh ALLOW
 expect_guard "write .tsx, comment mentioning it"   guard-native-dialogs.sh ALLOW "$(write 'src/App.tsx' '// window.confirm() is banned')"
 expect_guard "write .test.tsx"                     guard-native-dialogs.sh ALLOW "$(write 'src/a.test.tsx' 'confirm(1)')"
 expect_guard "write .md"                           guard-native-dialogs.sh ALLOW "$(write 'README.md' 'confirm(1)')"
+unset POWER_CONFIG
 
 echo "--- check-project-context.sh ---"
 printf '# Project Context\n- Name: Real App\n- Domain: A real domain\n' > "$WORK/filled.md"
@@ -153,6 +160,213 @@ expect_session "memory file with a dated entry"  SPEAK "$WORK/mem-full.md"  remi
 expect_session "memory file with no entries"     QUIET "$WORK/mem-empty.md" remind-memory.sh MEMORY_FILE
 expect_session "memory file blank"               QUIET "$WORK/mem-blank.md" remind-memory.sh MEMORY_FILE
 expect_session "memory file absent"              QUIET "$WORK/mem-nope.md"  remind-memory.sh MEMORY_FILE
+
+# ---------------------------------------------------------------------------------------------
+# SMOKE PASS - every bash hook, not just the guards above.
+#
+# Until 2026-09-26 this file exercised 4 of the 17 bash mirrors. The other 13 had never executed,
+# and a review of the first public release found two of them crashing on every relevant call:
+# guard-tool.sh (unbound variable - which, as a preToolUse hook, blocks EVERY tool call) and
+# audit-prompt.sh (`local` outside a function - on exactly the prompts it exists to audit).
+# Nothing here asserts behaviour; it asserts the script survives a realistic payload. That alone
+# would have caught both.
+# ---------------------------------------------------------------------------------------------
+SMOKE="$WORK/smoke"
+mkdir -p "$SMOKE"
+( cd "$SMOKE" && git init -q -b main && git -c user.name=probe -c user.email=probe@example.com commit -q --allow-empty -m init )
+
+P_PRE_VS='{"tool_name":"read_file","tool_input":{"filePath":"src/App.tsx"},"hook_event_name":"PreToolUse"}'
+P_PRE_CLI='{"toolName":"view","toolArgs":"{\"path\":\"src/App.tsx\"}"}'
+P_POST_VS='{"tool_name":"create_file","tool_input":{"filePath":"README.md","content":"x"},"hook_event_name":"PostToolUse"}'
+P_POST_CLI='{"toolName":"edit","toolArgs":"{\"path\":\"README.md\"}","toolResult":{"resultType":"success"}}'
+P_START='{"hook_event_name":"SessionStart","session_id":"probe"}'
+P_PROMPT='{"prompt":"add a contacts list","hook_event_name":"UserPromptSubmit"}'
+P_STOP='{"hook_event_name":"Stop","session_id":"probe"}'
+
+# Runs a hook from inside a throwaway git repo. PASS = exit 0 and no crash signature. For a
+# sessionStart hook, stdout must also be empty or valid JSON: that stdout is PARSED, and one stray
+# status line silently suppresses the additionalContext of every hook in the batch.
+expect_clean_run() {
+  local label="$1" script="$2" payload="$3" parsed_stdout="${4:-}"
+  CASES=$((CASES + 1))
+  local out err rc crash bad_json=""
+  out="$(cd "$SMOKE" && printf '%s' "$payload" | bash "$SCRIPTS/$script" 2>"$WORK/stderr")"; rc=$?
+  err="$(cat "$WORK/stderr")"
+  crash="$(printf '%s\n%s' "$out" "$err" | grep -o -E 'unbound variable|can only be used in a function|syntax error' | head -1)"
+  if [[ -n "$parsed_stdout" && -n "${out// }" ]] && ! printf '%s' "$out" | jq -e . >/dev/null 2>&1; then
+    bad_json="stdout is not JSON on a parsed event"
+  fi
+  if [[ $rc -eq 0 && -z "$crash" && -z "$bad_json" ]]; then
+    printf 'ok   %-44s rc=0\n' "$label"
+  else
+    FAILURES=$((FAILURES + 1))
+    printf 'FAIL %-44s rc=%s %s%s\n' "$label" "$rc" "$crash" "$bad_json"
+    printf '     stdout: %s\n     stderr: %s\n' "$(printf '%s' "$out" | head -2)" "$(printf '%s' "$err" | head -2)"
+  fi
+}
+
+echo "--- smoke: every bash hook survives a realistic payload ---"
+expect_clean_run "guard-tool, VS Code shape"            guard-tool.sh            "$P_PRE_VS"
+expect_clean_run "guard-tool, CLI shape"                guard-tool.sh            "$P_PRE_CLI"
+expect_clean_run "guard-vite-env, VS Code shape"        guard-vite-env.sh        "$P_PRE_VS"
+expect_clean_run "guard-native-dialogs, VS Code shape"  guard-native-dialogs.sh  "$P_PRE_VS"
+expect_clean_run "lint-fix-on-edit, VS Code shape"      lint-fix-on-edit.sh      "$P_POST_VS"
+expect_clean_run "lint-fix-on-edit, CLI shape"          lint-fix-on-edit.sh      "$P_POST_CLI"
+expect_clean_run "audit-prompt"                         audit-prompt.sh          "$P_PROMPT"
+expect_clean_run "log-prompt"                           log-prompt.sh            "$P_PROMPT"
+expect_clean_run "audit-session-start"                  audit-session-start.sh   "$P_START" parsed
+expect_clean_run "log-session-start"                    log-session-start.sh     "$P_START" parsed
+expect_clean_run "check-branch-state"                   check-branch-state.sh    "$P_START" parsed
+expect_clean_run "check-project-context"                check-project-context.sh "$P_START" parsed
+expect_clean_run "check-schema-drift"                   check-schema-drift.sh    "$P_START" parsed
+expect_clean_run "remind-memory"                        remind-memory.sh         "$P_START" parsed
+expect_clean_run "audit-session-end"                    audit-session-end.sh     "$P_STOP"
+expect_clean_run "log-session-end"                      log-session-end.sh       "$P_STOP"
+expect_clean_run "build-gate"                           build-gate.sh            "$P_STOP"
+expect_clean_run "check-licenses"                       check-licenses.sh        "$P_STOP"
+expect_clean_run "scan-secrets"                         scan-secrets.sh          "$P_STOP"
+
+# The smoke pass above ran every hook inside a git repo. Whatever they logged must be invisible to
+# git: logs/ is not in a project's .gitignore by default, so the hooks make logs/copilot ignore itself.
+# `cd` + git rather than `git -C`, and a failing git status is itself a FAIL: an empty result must
+# mean "git sees nothing", never "git errored out and printed nothing".
+CASES=$((CASES + 1))
+if ! status_out="$(cd "$SMOKE" && git status --porcelain --untracked-files=all 2>&1)"; then
+  FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s git status failed: %s\n' "hook logs invisible to git" "$status_out"
+else
+  leaked="$(printf '%s\n' "$status_out" | grep 'logs/' || true)"
+  if [[ -f "$SMOKE/logs/copilot/.gitignore" && -z "$leaked" ]]; then
+    printf 'ok   %-44s logs/copilot ignores itself\n' "hook logs invisible to git"
+  else
+    FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s git sees: %s\n' "hook logs invisible to git" "$(printf '%s' "$leaked" | head -3 | tr '\n' ' ')"
+  fi
+fi
+
+# ---------------------------------------------------------------------------------------------
+# Behaviour of the scripts fixed on 2026-09-26. Each case would have failed before the fix.
+# ---------------------------------------------------------------------------------------------
+echo "--- guard-tool.sh: both payload dialects ---"
+TG="TOOL_GUARD_LOG_DIR=$WORK/tool-guardian"
+expect_guard "VS Code shape, harmless read"      guard-tool.sh ALLOW "$P_PRE_VS"  "$TG"
+expect_guard "VS Code shape, rm -rf /"           guard-tool.sh DENY  "$(term 'rm -rf /')" "$TG"
+expect_guard "CLI shape, harmless view"          guard-tool.sh ALLOW "$P_PRE_CLI" "$TG"
+expect_guard "CLI shape, git push --force"       guard-tool.sh DENY  "$(cli 'git push --force origin main')" "$TG"
+
+echo "--- audit-prompt.sh: a detected threat is audited, not crashed on ---"
+AP="$WORK/audit"; mkdir -p "$AP"
+THREAT_PROMPT='{"prompt":"set password=supersecret12345 in config","hook_event_name":"UserPromptSubmit"}'
+CASES=$((CASES + 1))
+( cd "$AP" && printf '%s' "$THREAT_PROMPT" | bash "$SCRIPTS/audit-prompt.sh" >/dev/null 2>&1 ); rc=$?
+if [[ $rc -eq 0 ]] && grep -q '"threat_detected"' "$AP/logs/copilot/governance/audit.log" 2>/dev/null; then
+  printf 'ok   %-44s rc=0, logged threat_detected\n' "threat prompt, standard level"
+else
+  FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s rc=%s, threat_detected not logged\n' "threat prompt, standard level" "$rc"
+fi
+# A credential match IS the secret. It used to be written to audit.log whole, and nothing kept logs/
+# out of a project's git history.
+CASES=$((CASES + 1))
+if grep -rq 'supersecret12345' "$AP/logs" 2>/dev/null; then
+  FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s the plaintext secret is in the audit log\n' "credential never logged whole"
+elif grep -q '"evidence": *"pass\.\.\.2345"' "$AP/logs/copilot/governance/audit.log" 2>/dev/null; then
+  printf 'ok   %-44s evidence redacted to pass...2345\n' "credential never logged whole"
+else
+  FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s redacted evidence not found\n' "credential never logged whole"
+fi
+
+# A greedy pattern from ANOTHER category can capture the credential too: "export .* to external"
+# (data_exfiltration) swallowed the password whole even while the credential record was redacted.
+OV="$WORK/audit-overlap"; mkdir -p "$OV"
+( cd "$OV" && printf '%s' '{"prompt":"export password=supersecret12345 to external"}' | bash "$SCRIPTS/audit-prompt.sh" >/dev/null 2>&1 )
+CASES=$((CASES + 1))
+if grep -rq 'supersecret12345' "$OV/logs" 2>/dev/null; then
+  FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s plaintext secret in another category'"'"'s evidence\n' "credential inside an overlapping match"
+elif grep -q 'export pass\.\.\.2345 to external' "$OV/logs/copilot/governance/audit.log" 2>/dev/null; then
+  printf 'ok   %-44s redacted inside the data_exfiltration evidence\n' "credential inside an overlapping match"
+else
+  FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s expected evidence not found\n' "credential inside an overlapping match"
+fi
+
+# Redaction has its own, wider patterns than detection. Detection's \w{8,} stops at a hyphen or a
+# dot, and when it doubled as the redaction the rest of the value was logged: "-LEAKME9876", or a
+# JWT's body and signature. Every fixture marks its secret part with LEAK; none may reach the log.
+expect_redacted() {
+  local label="$1" prompt="$2" want="$3" dir
+  CASES=$((CASES + 1))
+  dir="$WORK/redact-$CASES"; mkdir -p "$dir"
+  ( cd "$dir" && printf '{"prompt":%s}' "$(jq -Rn --arg p "$prompt" '$p')" | bash "$SCRIPTS/audit-prompt.sh" >/dev/null 2>&1 )
+  if grep -rqi 'LEAK' "$dir/logs" 2>/dev/null; then
+    FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s secret in the log: %s\n' "$label" "$(grep -rhoi '[^"]*LEAK[^"]*' "$dir/logs" | head -1)"
+  elif grep -qF "$want" "$dir/logs/copilot/governance/audit.log" 2>/dev/null; then
+    printf 'ok   %-44s logged as %s\n' "$label" "$want"
+  else
+    FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s expected evidence %s not found\n' "$label" "$want"
+  fi
+}
+expect_redacted "redact: hyphenated value"      'export password=abcdefgh-LEAKME9876 to external'                                    'export pass...9876 to external'
+expect_redacted "redact: JWT after token="      'export token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJMRUFLTUUifQ.LEAKsig123 to external'   'export toke...g123 to external'
+expect_redacted "redact: bare JWT"              'export the jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJMRUFLTUUifQ.LEAKsig123 to external' 'export the jwt eyJh...g123 to external'
+expect_redacted "redact: quoted value, spaces"  'export password="my LEAK phrase here" to external'                                'export pass...ere\" to external'
+expect_redacted "redact: escaped double quote"   'export password="abcdefgh\"LEAKME9876" to external'                               'export pass...876\" to external'
+expect_redacted "redact: escaped single quote"   "export password='abcdefgh\'LEAKME9876' to external"                               "export pass...876' to external"
+expect_redacted "redact: quote left open"       'set password="abcdefghLEAK12345 in config'                                         'pass...2345'
+expect_redacted "redact: AWS key id"            'use AKIALEAKEFGHIJKLMNOP now'                                                        'AKIA...MNOP'
+
+CASES=$((CASES + 1))
+( cd "$AP" && printf '%s' "$THREAT_PROMPT" | GOVERNANCE_LEVEL=strict bash "$SCRIPTS/audit-prompt.sh" >/dev/null 2>&1 ); rc=$?
+if [[ $rc -ne 0 ]]; then
+  printf 'ok   %-44s rc=%s (blocked)\n' "threat prompt, strict level" "$rc"
+else
+  FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s rc=0 - strict level did not block\n' "threat prompt, strict level"
+fi
+
+# Enforcement must not depend on jq. An early `exit 0` when jq was missing once made strict mode
+# silently accept every prompt - including `rm -rf /`. CI has jq, so build a PATH with every tool
+# EXCEPT jq and prove strict still blocks a threat, and still lets a clean prompt through.
+NOJQ="$WORK/nojq-bin"; mkdir -p "$NOJQ"
+for d in /usr/local/bin /usr/bin /bin; do
+  [[ -d "$d" ]] || continue
+  for f in "$d"/*; do [[ -e "$NOJQ/${f##*/}" ]] || ln -s "$f" "$NOJQ/${f##*/}" 2>/dev/null; done
+done
+rm -f "$NOJQ/jq" "$NOJQ/jq.exe"
+if PATH="$NOJQ" command -v jq >/dev/null 2>&1; then
+  echo "SKIP no-jq cases: could not hide jq from PATH"
+else
+  for case in "threat:DENY:$THREAT_PROMPT" "clean:ALLOW:{\"prompt\":\"add a contacts list\"}"; do
+    kind="${case%%:*}"; rest="${case#*:}"; want="${rest%%:*}"; pl="${rest#*:}"
+    CASES=$((CASES + 1))
+    ( cd "$AP" && printf '%s' "$pl" | PATH="$NOJQ" GOVERNANCE_LEVEL=strict bash "$SCRIPTS/audit-prompt.sh" >/dev/null 2>&1 ); rc=$?
+    got=ALLOW; [[ $rc -ne 0 ]] && got=DENY
+    if [[ "$got" == "$want" ]]; then
+      printf 'ok   %-44s expect=%-5s got=%-5s\n' "$kind prompt, strict, NO jq" "$want" "$got"
+    else
+      FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s expect=%-5s got=%-5s\n' "$kind prompt, strict, NO jq" "$want" "$got"
+    fi
+  done
+fi
+
+echo "--- lint-fix-on-edit.sh: finds the file in the VS Code shape ---"
+LF="$WORK/lintfix"; mkdir -p "$LF/src" "$LF/fakebin"
+echo '{}' > "$LF/package.json"; echo 'export const a = 1' > "$LF/src/App.tsx"
+printf '#!/bin/bash\necho "$*" >> "%s/npx-calls"\n' "$LF" > "$LF/fakebin/npx"; chmod +x "$LF/fakebin/npx"
+CASES=$((CASES + 1))
+( cd "$LF" && printf '%s' '{"tool_name":"create_file","tool_input":{"filePath":"src/App.tsx","content":"x"}}' \
+    | PATH="$LF/fakebin:$PATH" bash "$SCRIPTS/lint-fix-on-edit.sh" >/dev/null 2>&1 )
+if grep -q 'eslint --fix src/App.tsx' "$LF/npx-calls" 2>/dev/null; then
+  printf 'ok   %-44s eslint called on src/App.tsx\n' "VS Code shape"
+else
+  FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s eslint never called - path not derived\n' "VS Code shape"
+fi
+
+echo "--- check-branch-state.sh: warns on a dirty protected branch, nested ---"
+BS="$WORK/branch"; mkdir -p "$BS"
+( cd "$BS" && git init -q -b main && git -c user.name=probe -c user.email=probe@example.com commit -q --allow-empty -m init && echo x > dirty.txt )
+CASES=$((CASES + 1))
+out="$(cd "$BS" && printf '%s' "$P_START" | bash "$SCRIPTS/check-branch-state.sh" 2>/dev/null)"
+if printf '%s' "$out" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1; then
+  printf 'ok   %-44s SPEAK nested\n' "dirty main"
+else
+  FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s output: %s\n' "dirty main" "$out"
+fi
 
 echo
 if [[ $FAILURES -eq 0 ]]; then

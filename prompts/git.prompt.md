@@ -10,12 +10,12 @@ agent: 'agent'
 - Mantieni invariati comandi git, nomi branch e formato commit.
 
 per ogni modifica applicata al codice sorgente bisogna creare un commit.
-il commit deve seguire lo standard per conventional commits. nel body del messaggio deve essere indicato il nome del istrozione di prompting ricevuta e una breve spiegazione del motivo
+il commit deve seguire lo standard per conventional commits. nel body del messaggio deve essere indicato il nome dell'istruzione di prompting ricevuta e una breve spiegazione del motivo
 ## branching e workflow
 
 1. controlla lo stato del repository (`git status`)
    - se siamo sul branch principale (`main`) e non ci sono file modificati, crea un nuovo branch con la sintassi: `feature/{{feature-name}}`
-   - se siamo sul branch principale (`main`) e ci sono file modificati, hiedi cosa fare  
+   - se siamo sul branch principale (`main`) e ci sono file modificati, chiedi cosa fare  
    - se siamo su un branch `feature/*`, controlla la lista dei file modificati e chiedi cosa fare  
 
 

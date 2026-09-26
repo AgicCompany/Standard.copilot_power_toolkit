@@ -27,7 +27,10 @@ Principles for helping GitHub Copilot understand your codebase and provide bette
 
 ## Context Hints
 
-- **Add a COPILOT.md file**: Document architecture decisions, patterns, and conventions Copilot should follow.
+- **Put durable project facts where Copilot actually reads them**: architecture decisions, patterns and
+  conventions go in `.github/copilot-instructions.md` (always loaded, so keep it short) or
+  `.github/project-context.md` (stack, integrations, constraints). Copilot does not read a free-standing
+  `COPILOT.md` or similar file on its own — facts written there are invisible to it.
 - **Use strategic comments**: At the top of complex modules, briefly describe the flow or purpose.
 - **Reference patterns explicitly**: "Follow the same pattern as `src/api/users.ts`" gives Copilot a concrete example.
 

@@ -9,7 +9,7 @@ commands, and exists because a memory store you cannot inspect is a configuratio
 |---|---|---|---|
 | **Global** | `%APPDATA%\Code\User\globalStorage\github.copilot-chat\memory-tool\memories\` | your account — every project, every workspace | no |
 | **Workspace** | `%APPDATA%\Code\User\workspaceStorage\<id>\GitHub.copilot-chat\memory-tool\memories\` | this workspace | no |
-| **Repo** | `docs/project-memory.md` | this repository | **yes** |
+| **Repo** | `.github/docs/project-memory.md` | this repository | **yes** |
 
 Both built-in stores load automatically at the start of a conversation, **before** any `applyTo`
 glob is evaluated, and are read back as settled convention. Neither appears in a PR diff.

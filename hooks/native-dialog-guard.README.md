@@ -1,6 +1,17 @@
+---
+name: 'Native Dialog Guard'
+description: 'Blocks writing window.confirm / alert / prompt into a Power Apps Code App, where the iframe sandbox makes confirm() return false without ever showing a dialog'
+tags: ['power-apps', 'code-apps', 'ui', 'pre-tool-use']
+---
+
 # Native Dialog Guard
 
 Denies writing `window.confirm` / `alert` / `prompt` into app source in a Power Apps Code App.
+
+**It only enforces in a Code App**, recognised the way `dataverse-schema-drift` recognises one: a
+`power.config.json` in the working directory, or the path in `POWER_CONFIG`. Anywhere else it allows
+the write and logs `not_a_code_app`. In a plain React app `confirm()` works; preferring the UI
+library's dialog there is a convention, and the instruction layer carries it.
 
 ## Why a hook and not an instruction
 
@@ -48,8 +59,9 @@ to disable guards.
 | `SKIP_DIALOG_GUARD` | unset | `true` disables entirely |
 | `DIALOG_GUARD_MODE` | `block` | `warn` emits `additionalContext` instead of denying |
 | `DIALOG_GUARD_LOG_DIR` | `logs/copilot/native-dialog-guard` | log location |
+| `POWER_CONFIG` | `power.config.json` | the file whose presence marks a Code App |
 
-Every decision is logged — `guard_passed`, `guard_denied`, `guard_warned` — so a silent guard can be
+Every decision is logged — `not_a_code_app`, `guard_passed`, `guard_denied`, `guard_warned` — so a silent guard can be
 distinguished from an absent one.
 
 ## Limitations

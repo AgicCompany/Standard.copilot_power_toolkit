@@ -191,6 +191,12 @@ $swap = $manifest.uiVariants.$Ui
 $includePatterns = @($includePatterns | Where-Object { $swap.remove -notcontains $_ }) + @($swap.add)
 $includePatterns = $includePatterns | Sort-Object -Unique
 
+# The remove list must ALSO act as a file-level exclusion. Filtering only the include-pattern strings
+# misses any profile that reaches a file through a broad glob: `full` includes '**', so -Profile full
+# used to ship BOTH shadcn-ui and fluent-ui-v9 - two contradicting styling authorities, both on
+# '**/*.{tsx,jsx}', on every component edit.
+$uiExcludePatterns = @($swap.remove)
+
 if (-not (Test-Path -LiteralPath $TargetProjectPath)) {
   throw "Target project path does not exist: $TargetProjectPath"
 }
@@ -247,7 +253,8 @@ foreach ($file in $sourceFiles) {
 
   if (Test-MatchesAny -Path $rel -Patterns $excludePatterns) { continue }
 
-  if (-not (Test-MatchesAny -Path $rel -Patterns $includePatterns)) {
+  if ((Test-MatchesAny -Path $rel -Patterns $uiExcludePatterns) -or
+      -not (Test-MatchesAny -Path $rel -Patterns $includePatterns)) {
     $notInProfile++
     continue
   }

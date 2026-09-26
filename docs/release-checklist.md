@@ -8,7 +8,7 @@
 ## Quality Gates
 1. `pnpm run build` passes.
 2. `pnpm run lint` passes (or approved exceptions documented).
-3. Critical user flows smoke-tested (Request list/edit/save, project edit/setup).
+3. The critical user flows named in the project's own acceptance criteria are smoke-tested end to end.
 
 ## Security And Configuration
 1. No secrets in code or configuration.

@@ -24,7 +24,7 @@
   decides.** Details: `instructions/react-ts.instructions.md` and the files it points to.
 
 ## Working rules
-- Read `project-context.md` before non-trivial work; read `docs/project-memory.md` for durable
+- Read `.github/project-context.md` before non-trivial work; read `.github/docs/project-memory.md` for durable
   decisions and corrections, and append to it when something is worth carrying forward.
 - Follow the auto-applied files in `instructions/` — the relevant ones are already in context.
 - Beyond a small change, suggest starting from `plan`/`small-plan`: conventions apply more reliably

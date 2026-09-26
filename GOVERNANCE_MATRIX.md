@@ -87,7 +87,6 @@ catch-all `full` profile.
 | `prompts/process-task-list.prompt.md` | Manage the task list in a markdown file to track progress toward completing a PRD | power-apps-code-app, react-vite |
 | `prompts/session-kickoff.prompt.md` | Bilingual session kickoff template (EN/IT) for high-signal Copilot collaboration | all |
 | `prompts/setup.prompt.md` | Project initialization and copilot-instructions.md setup | all |
-| `prompts/tech-stack.prompt.md` | Technology stack reference and guidelines for the project | baseline-authoring, power-apps-code-app, react-vite |
 
 ## Skills
 
@@ -117,11 +116,11 @@ catch-all `full` profile.
 | `hooks/dependency-license-checker.json` | Scans newly added dependencies for license compliance (GPL, AGPL, etc.) at session end | all |
 | `hooks/governance-audit.json` | Scans Copilot agent prompts for threat signals and logs governance events | all |
 | `hooks/lint-fix-on-edit.json` | Runs eslint --fix (and optionally prettier) on each file the agent writes, so the next read sees corrected code instead of accumulating drift until session end | all |
-| `hooks/memory-reminder.json` | Prints a short reminder at session start pointing to docs/project-memory.md, so the memory mechanism does not depend on being remembered unprompted | all |
-| `hooks/native-dialog-guard.json` | — | all |
+| `hooks/memory-reminder.json` | Prints a short reminder at session start pointing to .github/docs/project-memory.md, so the memory mechanism does not depend on being remembered unprompted | all |
+| `hooks/native-dialog-guard.json` | Blocks writing window.confirm / alert / prompt into a Power Apps Code App, where the iframe sandbox makes confirm() return false without ever showing a dialog | all |
 | `hooks/project-context-check.json` | Raises a gate at session start when project-context.md is still the unfilled template, so the /setup mechanism does not depend on someone remembering it exists | all |
 | `hooks/secrets-scanner.json` | Scans files modified during a Copilot coding agent session for leaked secrets, credentials, and sensitive data | all |
-| `hooks/session-logger.json` | Logs all Copilot coding agent session activity for audit and analysis | all |
+| `hooks/session-logger.json` | Logs metadata when Copilot sessions start, each turn completes, and a prompt is submitted - timestamps, working directory and event names; no prompt text and no tool calls | all |
 | `hooks/tool-guardian.json` | Blocks dangerous tool operations (destructive file ops, force pushes, DB drops) before the Copilot coding agent executes them | all |
 | `hooks/vite-env-guard.json` | Blocks writes that put a secret-looking value behind a VITE_ prefix, because everything VITE_-prefixed is compiled into the client bundle and is public | all |
 
@@ -132,5 +131,5 @@ catch-all `full` profile.
 | `SAFETY_GUARDRAILS.md` | Blocked actions, confirmation-required actions, secret handling |
 | `docs/WORKFLOW_AUTHORITY.md` | Canonical branching/release model (Gitflow) |
 | `docs/mcp-servers.md` | MCP server config and known gaps |
-| `docs/project-memory.md` | Cross-session durable memory store |
+| `.github/docs/project-memory.md` | Cross-session durable memory store, in a project. Seeded once from `docs/project-memory.template.md`, then project-owned |
 

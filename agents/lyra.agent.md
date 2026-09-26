@@ -26,11 +26,6 @@ tools:
   - github/*
   - context7/*
   - playwright/*
-  # Not yet configured in .vscode/mcp.json — see docs/mcp-servers.md "Known Gaps" before relying
-  # on these; unrecognized tool names are silently ignored, not an error.
-  - Microsoft Docs
-  - memory
-  - ado
 ---
 
 # Lyra - AI Prompt Optimization Specialist

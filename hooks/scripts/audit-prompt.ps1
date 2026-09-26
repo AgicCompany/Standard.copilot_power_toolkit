@@ -51,6 +51,19 @@ $Input_ = [Console]::In.ReadToEnd()
 # block the tool call outright.
 
 try { New-Item -ItemType Directory -Path 'logs/copilot/governance' -Force -ErrorAction Stop | Out-Null } catch { }
+
+# logs/ is not in a project's .gitignore by default, and these files hold prompt fragments, file
+# paths and commands. Make the folder ignore itself: it never edits the project's own .gitignore and
+# works however the baseline was installed. Delete logs/copilot/.gitignore to commit logs on purpose.
+try {
+  $ignorePath = [System.IO.Path]::Combine((Get-Location).ProviderPath, 'logs', 'copilot', '.gitignore')
+  if (-not (Test-Path -LiteralPath $ignorePath)) {
+    $ignoreText = "# Created by the Copilot baseline hooks. These logs can hold prompt fragments,`n" +
+      "# file paths and commands - they are not for version control. Delete this file only`n" +
+      "# if you deliberately want to commit them.`n*`n"
+    [System.IO.File]::WriteAllText($ignorePath, $ignoreText)
+  }
+} catch { }
 $Timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 $Level = if ($env:GOVERNANCE_LEVEL) { $env:GOVERNANCE_LEVEL } else { 'standard' }
 $Block = if ($env:BLOCK_ON_THREAT) { $env:BLOCK_ON_THREAT } else { 'false' }
@@ -83,11 +96,40 @@ $Patterns = @(
   @{ Regex = '(aws_access_key|AKIA[0-9A-Z]{16})'; Category = 'credential_exposure'; Severity = 0.95; Description = 'AWS key exposure' }
 )
 
+# What must never be written to the log is a different, deliberately wider question than the
+# detection table's "is this a threat": "could any of this be a secret". Reusing the detection
+# patterns for it leaked: \w{8,} stops at the first hyphen or dot, so password=abcdefgh-LEAKME9876
+# logged "-LEAKME9876" and a JWT logged everything after its header. So: the whole value after the
+# key, up to whitespace or the closing quote (an escaped quote does not close it; one left open by
+# a truncated match runs to the end), plus bare JWTs and AWS key IDs anywhere.
+#
+# Every secret-shaped substring is replaced with its first and last 4 characters, or [REDACTED]
+# when there are too few to hide anything - the same rule scan-secrets uses. Applied to the evidence
+# of EVERY category, not just credential_exposure: a greedy pattern such as "export .* to external"
+# captures whatever lies between its anchors, and once captured a password was logged whole.
+$CredentialRegexes = @(
+  '(api[_-]?key|secret([_-]?key)?|password|passwd|pwd|token)\s*[:=]\s*("(?:[^"\\]|\\.)*"?|''(?:[^''\\]|\\.)*''?|[^\s''"]+)'
+  'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'
+  'AKIA[0-9A-Z]{16}'
+)
+function Hide-Credentials {
+  param([string]$Text)
+  foreach ($rx in $CredentialRegexes) {
+    $Text = [regex]::Replace($Text, $rx, {
+      param($match)
+      $v = $match.Value
+      if ($v.Length -le 12) { '[REDACTED]' } else { "$($v.Substring(0,4))...$($v.Substring($v.Length-4))" }
+    }, 'IgnoreCase')
+  }
+  return $Text
+}
+
 $ThreatsFound = @()
 foreach ($p in $Patterns) {
   $m = [regex]::Match($Prompt, $p.Regex, 'IgnoreCase')
   if ($m.Success) {
-    $ThreatsFound += [PSCustomObject]@{ category = $p.Category; severity = $p.Severity; description = $p.Description; evidence = $m.Value }
+    $evidence = Hide-Credentials $m.Value
+    $ThreatsFound += [PSCustomObject]@{ category = $p.Category; severity = $p.Severity; description = $p.Description; evidence = $evidence }
   }
 }
 

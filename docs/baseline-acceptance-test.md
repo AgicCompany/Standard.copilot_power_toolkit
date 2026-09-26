@@ -808,10 +808,11 @@ Copilot saw anything.
 > **This step was rewritten on 2026-08-01, because the original could not pass.**
 >
 > It used to ask *"what do you know about the current state of this project's data layer?"* and
-> expect Copilot to repeat the hook's warning. That tests hook **injection**, and injection does not
-> work: `additionalContext` is not delivered on `sessionStart` or `preToolUse` (see
-> `docs/reference/hook-payloads.md`). The step was measuring a mechanism that does not exist, and
-> would have failed forever while looking like a Power Apps problem.
+> expect Copilot to repeat the hook's warning. That tests hook **injection**, which at the time did not
+> work — every hook here emitted `additionalContext` in a flat shape the host silently discards. The
+> step was measuring a mechanism that was broken, and would have failed forever while looking like a
+> Power Apps problem. **Correction:** once the payload was nested, injection worked on the next run
+> (see `docs/reference/hook-payloads.md`). The rewrite stands anyway, for the reason below.
 >
 > Two lessons kept here deliberately. First, **the old prompt was also a poor discriminator** — asked
 > about "the data layer", Copilot correctly described the data layer, and reading that as a failure

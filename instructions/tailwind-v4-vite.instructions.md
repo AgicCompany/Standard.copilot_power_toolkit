@@ -26,7 +26,7 @@ Instructions for installing and configuring Tailwind CSS version 4 and above usi
 Install `tailwindcss` and the `@tailwindcss/vite` plugin:
 
 ```bash
-npm install tailwindcss @tailwindcss/vite
+pnpm add tailwindcss @tailwindcss/vite
 ```
 
 ### Step 2: Configure Vite Plugin
@@ -83,7 +83,7 @@ import './index.css'
 Run the development server to verify installation:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 ## What NOT to Do in Tailwind v4
@@ -212,14 +212,14 @@ export function TestComponent() {
 1. Verify CSS import statement is `@import "tailwindcss";` (not old directives)
 2. Ensure CSS file is imported in your entry point
 3. Check Vite config includes the `tailwindcss()` plugin
-4. Clear Vite cache: `rm -rf node_modules/.vite && npm run dev`
+4. Clear Vite cache: `rm -rf node_modules/.vite && pnpm dev`
 
 ### Plugin Not Found Error
 
 If you see "Cannot find module '@tailwindcss/vite'":
 
 ```bash
-npm install @tailwindcss/vite
+pnpm add @tailwindcss/vite
 ```
 
 ### TypeScript Errors
@@ -236,8 +236,8 @@ If migrating from Tailwind v3:
 
 1. Remove `tailwind.config.js` (move customizations to CSS `@theme`)
 2. Remove `postcss.config.js` (if only used for Tailwind)
-3. Uninstall old packages: `npm uninstall postcss autoprefixer`
-4. Install new packages: `npm install tailwindcss @tailwindcss/vite`
+3. Uninstall old packages: `pnpm remove postcss autoprefixer`
+4. Install new packages: `pnpm add tailwindcss @tailwindcss/vite`
 5. Replace `@tailwind` directives with `@import "tailwindcss";`
 6. Update Vite config to use `@tailwindcss/vite` plugin
 

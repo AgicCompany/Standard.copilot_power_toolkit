@@ -122,7 +122,7 @@ A one-directional rule overcorrects. State the ceiling as well as the floor.
 
 **4. State precedence when two sources can conflict.**
 If the model has another mechanism for the same job, say which wins — it will not infer it.
-- ✗ `Append durable facts to docs/project-memory.md.` → wrote to its own built-in memory tool.
+- ✗ `Append durable facts to .github/docs/project-memory.md.` → wrote to its own built-in memory tool.
 - ✓ `If an entry conflicts with an instruction, **the instruction wins.**` plus naming the competing
   store explicitly.
 
