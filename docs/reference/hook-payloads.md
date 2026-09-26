@@ -17,7 +17,7 @@ too. Without it, anyone debugging a hook in an app project has no reference at a
 | `PostToolUse` | ignored | Logging, formatting | ✅ **verified — PascalCase only**; camelCase `postToolUse` does NOT fire |
 | `sessionEnd` | ignored | Cleanup, summaries | ❌ **never fires** — probe-verified, incl. full VS Code quit |
 | **`Stop`** | — | **Turn complete** — best home for end-of-change checks | ✅ **verified, fires every turn** |
-| `agentStop` / `AgentStop` | — | (documented, but never fires here - use `Stop`) — the reference recommends it for end-of-turn checks like `git diff --stat` | ❓ **untested** |
+| `agentStop` / `AgentStop` | — | Documented for end-of-turn checks like `git diff --stat`. Not re-probed here, because `Stop` already covers the use case | ❓ **untested** |
 | `postToolUseFailure` | — | Recovery after a failed tool run | ❓ untested |
 | `subagentStart` / `subagentStop` | — | Subagent audit / output validation | ❓ untested |
 | `errorOccurred` | ignored | Diagnostics, alerts | ❓ untested |
@@ -72,7 +72,7 @@ platform is at fault. `lint-baseline.ps1` now enforces the nested shape so this 
 model in any project. Meanwhile `instructions.instructions.md` and `AGENTS.md` both recorded, as a
 known instruction failure:
 
-> `Append durable facts to docs/project-memory.md.` → wrote to its own built-in memory tool
+> `Append durable facts to .github/docs/project-memory.md.` → wrote to its own built-in memory tool
 
 Within two days of the payload fix, Copilot began referencing the file unprompted (*"There's a
 recorded entry in project-memory.md I haven't read yet"*) and then **wrote to it for the first time**
@@ -84,7 +84,7 @@ worked. One instance is not proof, so the example stands; but if repo-memory wri
 revisit it, because "the model ignores this instruction" and "nothing ever told the model the file
 was real" call for opposite fixes.
 
-Related: `apply-baseline -Force` was separately overwriting `docs/project-memory.md` on every
+Related: `apply-baseline -Force` was separately overwriting `.github/docs/project-memory.md` on every
 re-sync. That bug was **latent** rather than destructive precisely because nothing had ever written
 to the file. Both are fixed; either alone would have left the memory mechanism useless.
 
@@ -134,7 +134,9 @@ So, for any hook or instruction meant to change what happens **before** work sta
 **`agentStop` is a real, documented event with its own payload** (`{ timestamp, cwd }`) — the
 authoring guide explicitly suggests it for final validation. If it fires here it is a *better* home
 for `build-gate` than `sessionEnd`, because the gate would run when a turn completes rather than
-whenever a session happens to end. Test it with `docs/reference/event-probe.md`.
+whenever a session happens to end. That slot is now filled by `Stop`, which is verified to fire after
+every turn; `agentStop` itself has not been re-probed. `docs/reference/event-probe.md` is the procedure
+if it ever needs to be.
 
 ## The two dialects
 
@@ -434,12 +436,10 @@ wholesale, which is worse than one that misses a case.
 ## Verified separately
 
 - `sessionStart` and `userPromptSubmitted` **do** fire in VS Code Copilot Chat.
-- `sessionEnd` **appeared** not to fire — ⚠️ **UNVERIFIED, do not cite as established.** Based on
-  two observations only (new chats, one window reload). **Not** tested against a full VS Code quit,
-  against alternate casing (`SessionEnd`), or against `agentStop` — which `instructions/hooks.instructions.md`
-  documents as a real event with its own payload schema. Run `docs/reference/event-probe.md` before
-  treating this as a platform limitation. Recorded here because an under-evidenced claim in a repo
-  doc gets read back as fact: an agent cited this very line as corroboration for the same conclusion
-  it was derived from. Consequence if it holds: new chats and window reloads produce no end event, so
-  `build-gate`, `secrets-scanner`, and `dependency-license-checker` never run automatically there.
+- `sessionEnd` does **not** fire — **probe-verified**, including a full VS Code quit and the
+  `SessionEnd` casing (see the event table above). `Stop` fires after every completed turn, which is
+  why `build-gate`, `secrets-scanner` and `dependency-license-checker` are registered on it.
+- This bullet once read *"UNVERIFIED, do not cite as established"*, written before the probe ran, and
+  outlived the probe that settled it — leaving the file contradicting its own table. An
+  under-evidenced claim in a repo doc gets read back as fact; so does a stale caveat.
 - `preToolUse` **does** fire — the scripts run, they just cannot read what they were sent.

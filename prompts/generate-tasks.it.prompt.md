@@ -47,7 +47,13 @@ La task list generata _deve_ seguire questa struttura:
 ### Note
 
 - I test unitari dovrebbero tipicamente essere posizionati accanto ai file di codice che stanno testando (es., `MyComponent.tsx` e `MyComponent.test.tsx` nella stessa directory).
-- Usare `npx jest [percorso/opzionale/del/file/test]` per eseguire i test. L'esecuzione senza un percorso esegue tutti i test trovati dalla configurazione Jest.
+- Leggere `package.json` prima di scrivere qualsiasi comando di test, controllando sia gli script sia le dipendenze:
+  - esiste uno script `test` → usarlo (`pnpm test`);
+  - nessuno script, ma `vitest` è tra le dipendenze → `pnpm vitest run [percorso/opzionale/del/file/test]`;
+  - nessuno dei due → il progetto non ha ancora un test runner. Aggiungere un task per configurare
+    Vitest + React Testing Library (lo standard di questa baseline, vedi `vitest-react-testing.instructions.md`)
+    prima di qualsiasi task che dipenda dai test. Non prescrivere un comando di test che non può
+    funzionare: lo scaffold predefinito non definisce uno script `test` e non installa Vitest.
 
 ## Task
 

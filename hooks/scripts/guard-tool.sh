@@ -41,7 +41,9 @@ LOG_FILE="$LOG_DIR/guard.log"
 # ---------------------------------------------------------------------------
 # A guard that cannot read its input must NEVER report success. Confirmed live: this logged
 # guard_passed 200+ times with an empty tool name - inspecting nothing, reporting safety.
-if [[ -z "${PAYLOAD// }" ]]; then
+# (This line once read ${PAYLOAD// } - a variable never assigned. Under `set -u` that aborted with
+# exit 1 on EVERY call, and a non-zero exit from a preToolUse hook blocks the tool call.)
+if [[ -z "${INPUT// }" ]]; then
   echo "[WARN] tool-guardian: no payload on stdin - nothing was inspected. See docs/reference/hook-payloads.md"
   printf '{"timestamp":"%s","event":"guard_no_payload","mode":"%s","reason":"empty_stdin"}
 ' "$TIMESTAMP" "$MODE" >> "$LOG_FILE"
@@ -51,20 +53,29 @@ fi
 TOOL_NAME=""
 TOOL_INPUT=""
 
+# Two payload dialects, exactly as guard-tool.ps1 handles them:
+#   tool_name / tool_input  = VS Code Copilot Chat (tool_input is an OBJECT)
+#   toolName  / toolArgs    = Copilot CLI           (toolArgs is a JSON STRING)
+# Reading only the CLI pair meant that in VS Code on macOS/Linux this guard inspected an empty
+# string and passed everything.
 if command -v jq &>/dev/null; then
-  TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.toolName // empty' 2>/dev/null || echo "")
-  TOOL_ARGS_RAW=$(printf '%s' "$INPUT" | jq -r '.toolArgs // empty' 2>/dev/null || echo "")
-  if [[ -n "$TOOL_ARGS_RAW" ]]; then
-    TOOL_INPUT=$(printf '%s' "$TOOL_ARGS_RAW" | jq -r 'if type == "object" then [.[] | tostring] | join(" ") else tostring end' 2>/dev/null || printf '%s' "$TOOL_ARGS_RAW")
-  fi
+  TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // .toolName // empty' 2>/dev/null || echo "")
+  TOOL_INPUT=$(printf '%s' "$INPUT" | jq -r '
+    def flat: if type == "object" or type == "array" then [.[] | flat] | join(" ") else tostring end;
+    if   (.tool_input | type) == "object" then .tool_input | flat
+    elif (.toolArgs   | type) == "string" then .toolArgs | (try fromjson catch .) | flat
+    elif  .toolArgs != null              then .toolArgs | flat
+    else empty end' 2>/dev/null || echo "")
 fi
 
-# Fallback: extract with grep/sed if jq unavailable or fields empty
+# Without jq (or if both fields came back empty), inspect the WHOLE raw payload rather than
+# nothing. A destructive command matches wherever it sits in the JSON, so the guard still works;
+# an empty string here would silently pass every call.
 if [[ -z "$TOOL_NAME" ]]; then
-  TOOL_NAME=$(printf '%s' "$INPUT" | grep -oE '"toolName"\s*:\s*"[^"]*"' | head -1 | sed 's/.*"toolName"\s*:\s*"//;s/"//')
+  TOOL_NAME=$(printf '%s' "$INPUT" | grep -oE '"(tool_name|toolName)"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*:[[:space:]]*"//; s/"$//' || true)
 fi
 if [[ -z "$TOOL_INPUT" ]]; then
-  TOOL_INPUT=$(printf '%s' "$INPUT" | grep -oE '"toolArgs"\s*:\s*"([^"\\]|\\.)*"' | head -1 | sed 's/.*"toolArgs"\s*:\s*"//;s/"$//')
+  TOOL_INPUT="$INPUT"
 fi
 
 # Combine for pattern matching

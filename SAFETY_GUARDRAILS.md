@@ -10,7 +10,9 @@ Purpose: Define baseline safety controls for AI-assisted development across all 
 ## Blocked Actions
 - Execute destructive filesystem commands without explicit user confirmation.
 - Run force push or history-rewrite commands on shared branches without explicit user confirmation.
-- Expose, print, or commit secrets (tokens, keys, passwords, connection strings).
+- Expose, print, or commit secrets (tokens, keys, passwords, secret-bearing connection strings). A
+  value that is public by design — an Application Insights connection string, a Stripe publishable
+  key — is not a secret; see `vite-env-and-secrets.instructions.md` for how to record it as such.
 - Deploy to production directly from unreviewed or unapproved changes.
 
 ## Confirmation Required

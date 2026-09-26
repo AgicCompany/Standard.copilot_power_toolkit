@@ -10,7 +10,7 @@ applyTo: '**'
 
 ## The repo memory file
 
-`docs/project-memory.md` is the only memory store that is committed, shared and reviewable.
+`.github/docs/project-memory.md` is the only memory store that is committed, shared and reviewable.
 
 1. **Read it at the start of non-trivial work**, and apply it the way you'd apply `project-context.md`.
 2. **Append a durable fact at the point you learn it**, not "later" — a corrected approach, a
@@ -27,14 +27,14 @@ This is the rule that actually binds, because the built-in tool is one tool call
 is not — and the cheaper action wins unless the rule names it. **Calling the memory tool does not
 discharge the obligation; it creates one.**
 
-- Wrote a repo fact to the built-in tool? **Add the same line to `docs/project-memory.md` now**, in
+- Wrote a repo fact to the built-in tool? **Add the same line to `.github/docs/project-memory.md` now**, in
   the same turn, before reporting the task done.
 - Reverting a change you recorded? Remove the note from **both** stores.
 
 > Measured 2026-07-28 over a full 17-step run: **five** unprompted writes to the built-in store,
-> **zero** to `docs/project-memory.md`. Every entry was accurate and useful, and all of it landed
+> **zero** to `.github/docs/project-memory.md`. Every entry was accurate and useful, and all of it landed
 > where no teammate, no PR diff and no future machine would ever see it. The destination was the
-> problem, and "append durable facts to `docs/project-memory.md`" alone did not redirect it.
+> problem, and "append durable facts to `.github/docs/project-memory.md`" alone did not redirect it.
 
 ## Never memorialise a workaround, and never let memory override an instruction
 
@@ -45,7 +45,7 @@ makes a wrong entry self-reinforcing: written once, cited as precedent forever, 
    green or a tool unblocked, that is an open problem. Record it only once it's confirmed as intended.
 2. **If an entry conflicts with an `instructions/*.instructions.md` rule, the instruction wins.** Say
    the conflict out loud rather than following the memory, and correct or delete the entry.
-3. **Prefer `docs/project-memory.md` precisely because it is reviewable.** A bad entry there shows up
+3. **Prefer `.github/docs/project-memory.md` precisely because it is reviewable.** A bad entry there shows up
    in a PR diff. The same entry in a built-in store is invisible and permanent.
 
 ## Three stores — know which one you're writing to
@@ -54,7 +54,7 @@ makes a wrong entry self-reinforcing: written once, cited as precedent forever, 
 |---|---|
 | **Global** built-in | **your account — every project, every workspace, every session** |
 | **Workspace** built-in | this workspace only |
-| **Repo** `docs/project-memory.md` | committed, shared, reviewable |
+| **Repo** `.github/docs/project-memory.md` | committed, shared, reviewable |
 
 Both built-in stores are machine-local: not version controlled, invisible to teammates and to code
 review, lost when the workspace id changes. They also load **before** any `applyTo` glob is evaluated,

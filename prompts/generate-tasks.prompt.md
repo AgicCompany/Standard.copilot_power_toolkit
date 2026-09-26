@@ -47,7 +47,13 @@ The generated task list _must_ follow this structure:
 ### Notes
 
 - Unit tests should typically be placed alongside the code files they are testing (e.g., `MyComponent.tsx` and `MyComponent.test.tsx` in the same directory).
-- Use `npx jest [optional/path/to/test/file]` to run tests. Running without a path executes all tests found by the Jest configuration.
+- Read `package.json` before writing any test command, and check both its scripts and its dependencies:
+  - a `test` script exists → use it (`pnpm test`);
+  - no script, but `vitest` is a dependency → `pnpm vitest run [optional/path/to/test/file]`;
+  - neither → the project has no test runner yet. Add a task to set up Vitest + React Testing Library
+    (this baseline's standard, see `vitest-react-testing.instructions.md`) ahead of any task that relies
+    on tests. Do not prescribe a test command that cannot run — the default scaffold defines no `test`
+    script and does not install Vitest.
 
 ## Tasks
 

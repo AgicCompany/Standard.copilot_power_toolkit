@@ -31,13 +31,34 @@ remove.
 | `-DryRun` | Print what would happen, write nothing | off |
 | `-ListProfiles` | Print profiles and descriptions | — |
 
+## The README already documents the npx command
+
+`README.md` → *Apply it to a project* describes the npx surface users will be told to run: from the
+project root, with `--profile`, `--ui`, `--force`, `--prune`, `--dry-run` and `--list-profiles`,
+mirroring the script's flags above. **Treat it as the spec.** If the CLI ends up with different flag
+names, a positional target path, or subcommands, change the README in the same PR, or users follow
+instructions that do not work.
+
+**Before publishing, fill in the package name.** It is a single placeholder token:
+
+```bash
+git grep -n "<npm-package-name>" -- README.md      # the occurrences to replace (this file only explains them)
+```
+
+Replace each with the published name (e.g. `@scope/package`), and delete the README's blockquote
+that begins *"`<npm-package-name>` is a placeholder"* — it tells users to fall back to the PowerShell
+script until the package exists.
+
 ## Behaviour that must be preserved
 
 Each of these exists because its absence was a real, observed bug.
 
 1. **Profile resolution.** Flatten `extends` recursively (error on a cycle), prepend `common`, then
-   apply the `uiVariants` swap — remove its `remove` list, add its `add` list. shadcn and Fluent are
-   mutually exclusive, not additive: both declare `applyTo: '**/*.{tsx,jsx}'`.
+   apply the `uiVariants` swap: add its `add` list, and treat its `remove` list as a **file-level
+   exclusion** — not merely as strings to delete from the include list. shadcn and Fluent are
+   mutually exclusive, not additive: both declare `applyTo: '**/*.{tsx,jsx}'`. *Bug it prevents:*
+   removing only the include strings missed any profile that reaches a file through a broad glob —
+   `full` includes `**`, so `-Profile full` shipped both styling authorities at once.
 
 2. **Glob semantics** (baseline-relative, forward slashes): `**/` spans any number of directories,
    `**` spans anything, `*` stays inside one path segment. `alwaysExcluded` wins over every include.

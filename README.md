@@ -4,11 +4,13 @@ A reusable GitHub Copilot configuration you copy into a project as its `.github/
 instructions, agents, prompts, skills, and hooks — so Copilot follows your team's conventions
 instead of its own defaults.
 
-```powershell
-pwsh ./tools/apply-baseline.ps1 -TargetProjectPath "C:\path\to\your-app" -Profile react-vite
+```bash
+npx <npm-package-name> --profile react-vite
 ```
 
-Reload the VS Code window and Copilot picks it up. Nothing to install, no service, no account.
+Run it from your project's root, then reload the VS Code window and Copilot picks it up. It writes
+the `.github/` folder (and `.vscode/mcp.json`) and adds nothing to your project's dependencies. No
+service, no account. Options and re-syncing: [Apply it to a project](#apply-it-to-a-project).
 
 ## Why this exists
 
@@ -24,8 +26,9 @@ baseline is built around, and most of its design follows from it:
   Everything else loads by `applyTo` glob, on demand, or not at all. Detail in the core file is paid
   for on every single turn.
 - **Profiles decide what ships.** One baseline, several project types — `react-vite`,
-  `power-apps-code-app`, `baseline-authoring`, `full`. Assets belonging to no profile stay in the
-  repo and simply aren't copied. New project type means a new profile, never a deleted asset.
+  `power-apps-code-app`, `baseline-authoring`, `full`. An asset earns its place by belonging to a
+  profile once it has been tested in real use; one that fits no profile ships to nobody, so it does
+  not stay. New project type means a new profile.
 - **It is tested.** `tools/lint-baseline.ps1` catches broken globs, dangling handoff targets, hook
   scripts that crash under the host's PowerShell, and stale governance entries.
   `docs/baseline-acceptance-test.md` is a scripted Copilot session for checking whether the
@@ -34,40 +37,74 @@ baseline is built around, and most of its design follows from it:
 
 ## Prerequisites
 
-**Check first — it tells you everything missing at once:**
-
-```powershell
-powershell -File tools/check-environment.ps1
-powershell -File tools/check-environment.ps1 -Profile power-apps-code-app   # adds the PAC CLI check
-```
-
-Note `powershell`, not `pwsh` — the checker deliberately runs under Windows PowerShell 5.1, because
-*"pwsh is not recognized"* is the first thing you hit on a clean machine.
-
 | | Why | Install |
 |---|---|---|
-| **PowerShell 7+** (`pwsh`) | `apply-baseline.ps1`, `lint-baseline.ps1` | `winget install --id Microsoft.PowerShell -e` |
-| **Git** | cloning; the delivery agent and several hooks shell out to it | `winget install --id Git.Git -e` |
-| **Node.js LTS** | Vite, the test runner, the `npx`-based hooks | `winget install --id OpenJS.NodeJS.LTS -e` |
+| **Node.js LTS** | `npx` to apply the baseline; Vite, the test runner, the hooks that call `npx` | `winget install --id OpenJS.NodeJS.LTS -e` |
+| **Git** | the delivery agent and several hooks shell out to it | `winget install --id Git.Git -e` |
 | **pnpm** | the package manager this baseline mandates | `npm install -g pnpm` |
 | **VS Code + GitHub Copilot Chat** | everything the baseline configures | — |
 | **Power Apps CLI** *(Power Apps profile only)* | `pa app init` / `add data-source` / `push`. Replaces the legacy `pac code`, which cannot add Dataverse APIs | `npm install --global @microsoft/power-apps-cli` |
 | `gh` *(optional)* | lets the delivery agent open PRs directly | `winget install --id GitHub.cli -e` |
 | `jq` *(macOS / Linux)* | **required there** — the `.sh` hook mirrors run on macOS and Linux, and the guards **fail open** without `jq`. Not needed on Windows, where the `.ps1` mirrors run | `brew install jq` · `apt install jq` · Windows: not needed |
 
-Three things that bite on a fresh machine, in the order they bite:
+**On Windows, nothing PowerShell-related needs installing to *use* the baseline.** The hooks run
+under Windows PowerShell 5.1, which ships with the OS.
 
-1. **Windows already has PowerShell — the wrong one.** `powershell` is 5.1 and ships with the OS;
-   `pwsh` is 7+ and is a separate install. Both are used here: the apply script wants 7, and the
-   Copilot host runs the hooks under 5.1.
-2. **Restart your terminal after installing anything.** PATH changes don't reach a shell that is
+Two things that bite on a fresh machine:
+
+1. **Restart your terminal after installing anything.** PATH changes don't reach a shell that is
    already open, so the tool you just installed still looks missing.
-3. **Use pnpm to scaffold, not npm.** `copilot-instructions.md` declares pnpm as the one package
+2. **Use pnpm to scaffold, not npm.** `copilot-instructions.md` declares pnpm as the one package
    manager; scaffolding with npm puts a contradiction in front of Copilot from the very first turn.
 
+### Maintaining the baseline itself
+
+Working in a clone of this repository — linting, testing hooks, or applying without npm — also needs
+**PowerShell 7+** (`pwsh`, a separate install from the built-in 5.1:
+`winget install --id Microsoft.PowerShell -e`). From the clone, one command reports everything
+missing at once:
+
+```powershell
+powershell -File tools/check-environment.ps1
+powershell -File tools/check-environment.ps1 -Profile power-apps-code-app   # adds the Power Apps CLI (pa) check
+```
+
+Note `powershell`, not `pwsh` — the checker deliberately runs under Windows PowerShell 5.1, because
+*"pwsh is not recognized"* is the first thing you hit on a clean machine.
+
+## Apply it to a project
+
+From the project's root folder:
+
+```bash
+npx <npm-package-name> --profile react-vite
+```
+
+In a pnpm project, `pnpm dlx <npm-package-name> …` does exactly the same.
+
+| Option | What it does |
+|---|---|
+| `--profile <name>` | `react-vite`, `power-apps-code-app` (the default for a new project), `baseline-authoring`, or `full`. **Remembered**: a later run without it keeps the project's profile |
+| `--ui shadcn\|fluent` | UI library. `shadcn` is the default; the two are mutually exclusive. Remembered |
+| `--force` | Re-sync: overwrite the baseline's own files with the current version |
+| `--prune` | Also remove baseline files the current profile no longer includes |
+| `--dry-run` | Show what would be written or removed, and change nothing |
+| `--list-profiles` | Print the profiles and what each is for |
+
+**Four files become yours after the first run and are never overwritten, not even with `--force`:**
+`.github/copilot-instructions.md`, `.github/project-context.md`, `.github/docs/project-memory.md`
+and `.github/vite-env-guard.allow`. When the baseline's template for one of them changes, a re-sync tells you so
+and leaves the merge to you.
+
+> **`<npm-package-name>` is a placeholder** — the npm package is being published. Until it is, apply
+> from a clone of this repository with PowerShell 7:
+> `pwsh ./tools/apply-baseline.ps1 -TargetProjectPath "C:\path\to\your-app" -Profile react-vite`
+> (full guide: `USAGE_APPLY_ANY_PROJECT.md`).
+
 > **Reading this inside a project's `.github/` folder?** This describes what was installed there.
-> To maintain the baseline itself see `AGENTS.md`; to apply it elsewhere see
-> `USAGE_APPLY_ANY_PROJECT.md`.
+> The maintainer and installer documentation (`AGENTS.md`, `INSTALLER.md`,
+> `USAGE_APPLY_ANY_PROJECT.md`) is not copied into projects — it lives in the source repository,
+> <https://github.com/AgicCompany/Standard.copilot_power_toolkit>.
 
 ## 📂 Directory Structure
 
@@ -111,6 +148,7 @@ field. See `instructions/agents.instructions.md` for the full schema.
 | `review` | Comprehensive code review with before/after suggestions |
 | `checklist` | Structural/quality-gate checklist validation |
 | `debug` | Systematic bug investigation |
+| `delivery` | Git workflow — branches before work starts, conventional commits, opens the PR. The only agent that runs git |
 | `accessibility` | WCAG 2.1/2.2 and inclusive UX guidance |
 | `lyra` | Prompt optimization |
 | `repo-architect` | Scaffold/validate this baseline's own folder structure |
@@ -148,7 +186,7 @@ errors on any other missing `applyTo`.
 | `power-apps-code-apps.instructions.md` | `**/*.{ts,tsx}`, `power.config.json` | Code Apps rules (full reference in `docs/reference/`) |
 | `tailwind-v4-vite.instructions.md` | `**/vite.config.*`, `**/*.css` | Tailwind v4 install/config only |
 | `vite-env-and-secrets.instructions.md` | `.env*`, `vite.config.*` | `VITE_` prefix rules, client-exposure prevention |
-| `fluent-ui-v9.instructions.md` | opt-in, no profile | Alternative styling authority for native Power Platform look |
+| `fluent-ui-v9.instructions.md` | `**/*.{tsx,jsx}`, with `-Ui fluent` | Alternative styling authority for a native Power Platform look. Replaces `shadcn-ui` and `tailwind-v4-vite` — the two are mutually exclusive |
 
 **Role in LLM:** contextual instructions loaded based on file patterns.
 
@@ -158,8 +196,13 @@ Instruction files carry the rules that change code. **Long reference catalogues 
 `docs/reference/`**, linked from a short instruction file and read on demand. This is enforced by
 history: `a11y`, `performance-optimization`, and `power-apps-code-apps` had each grown to 25-28KB
 and all auto-applied to `**/*.tsx`, so a single component edit loaded ~97KB (~25k tokens) of prose
-before Copilot saw any code — the exact opposite of progressive disclosure. They are now ~2-3KB each
-with the full catalogues in `docs/reference/`.
+before Copilot saw any code — the exact opposite of progressive disclosure. `a11y` and
+`performance-optimization` are now under 4KB each, with their catalogues in `docs/reference/`.
+
+**`power-apps-code-apps` is the exception, at ~20KB.** It is the largest instruction file and the
+biggest single cost of a component edit in a Code App, because it carries the rules that change code
+there — the CLI, bounded data access, multi-row writes, the trust boundary. It is the first candidate
+if the per-edit cost needs cutting again.
 
 ### `prompts/` — Reusable Prompt Templates
 
@@ -176,9 +219,13 @@ On-demand templates, invoked via slash command (e.g. `/create-prd`). Notable one
 ### `skills/` — Bundled Task Skills
 
 Folder + `SKILL.md`, loaded in full when triggered — treat size as a real cost even though loading
-is on-demand. Includes `power-apps-code-app-scaffold` (the guided path for starting a brand-new
-Power Apps Code App: PAC CLI auth → init → connect Dataverse tables → apply this baseline),
-Azure/Dataverse-specific skills, and general ones (`frontend-design`, `mcp-builder`, `docx`).
+is on-demand. For Code Apps they include `power-apps-code-app-scaffold` (the guided path for a
+brand-new app: `pa` CLI sign-in → init → connect Dataverse tables), `dataverse-typed-client`,
+`custom-api-authoring` (writes that touch more than one row) and `code-app-deploy`; general ones
+include `component-scaffold` and `frontend-design`.
+
+Which skills a project actually has depends on its profile — `skills/README.md` shows how to list
+them.
 
 ### `hooks/` — Session-Lifecycle Automation
 
@@ -203,10 +250,15 @@ instruction the model has to remember to follow:
 - `build-gate` — deterministic type-check (`tsc -b` or `tsc --noEmit`, whichever the project's
   `tsconfig.json` actually needs) + lint check at session end (warn by default; set `GATE_MODE=block`
   once trusted)
-- `memory-reminder` — surfaces `docs/project-memory.md` at session start so the memory mechanism in
+- `memory-reminder` — surfaces `.github/docs/project-memory.md` at session start so the memory mechanism in
   `instructions/memory.instructions.md` doesn't depend on being remembered unprompted
 - `vite-env-guard` — **blocks** writes putting a secret-looking value behind a `VITE_` prefix
   (everything `VITE_`-prefixed is compiled into the public client bundle)
+- `native-dialog-guard` — **blocks** writing `window.confirm` / `alert` / `prompt` into a Power Apps
+  Code App, where the iframe sandbox makes `confirm()` return `false` without ever showing a dialog
+- `branch-guard` — warns at session start when you are on a protected branch with uncommitted work
+- `project-context-check` — raises a gate at session start while `project-context.md` is still the
+  unfilled template, so `/setup` does not depend on someone remembering it exists
 - `lint-fix-on-edit` — runs `eslint --fix` on each file the agent writes, so the next read sees
   corrected code instead of drift accumulating until session end
 - `dataverse-schema-drift` — warns at session start when `power.config.json` is newer than
@@ -227,11 +279,14 @@ report them. See the table in `instructions/hooks.instructions.md`.
 **Example — editing `App.tsx`:** `copilot-instructions.md` loads, plus the `**` files
 (`general-coding`, `context-engineering`, `memory`) and the `.tsx` matches (`react-ts`, `shadcn-ui`,
 `data-fetching`, `forms-and-validation`, `error-handling`, `a11y`, `performance-optimization`, and
-`power-apps-code-apps` in a Code App). That is roughly 30KB total. The `docs/reference/` catalogues,
-`csharp-dotnet`, every agent, and every prompt stay out of context until invoked.
+`power-apps-code-apps` in a Code App). **Measured 2026-09-26: about 71KB (~18k tokens) in a Code App,
+about 52KB in a plain `react-vite` project** — `power-apps-code-apps` alone is the difference. The
+`docs/reference/` catalogues, every agent and every prompt stay out of context until invoked, and
+`csharp-dotnet` / `dataverse-plugins` until a `.cs` file is in play.
 
 Measure it rather than assuming — the `applyTo` globs are the only source of truth, and this is
-exactly where the baseline drifted before.
+exactly where the baseline drifted before. This section said "roughly 30KB" until the figure above
+was actually measured.
 
 ## 📝 Best Practices
 
@@ -267,4 +322,4 @@ exactly where the baseline drifted before.
 
 ---
 
-**Last Updated:** 2026-07-23
+**Last Updated:** 2026-09-26

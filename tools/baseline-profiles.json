@@ -114,7 +114,6 @@
         "prompts/process-task-list.it.prompt.md",
         "prompts/git.prompt.md",
         "prompts/e2e-test.prompt.md",
-        "prompts/tech-stack.prompt.md",
         "skills/frontend-design/**",
         "skills/component-scaffold/**",
         "eslint/**"
@@ -170,7 +169,6 @@
         "agents/lyra.agent.md",
         "agents/tdd.agent.md",
         "agents/checklist.agent.md",
-        "prompts/tech-stack.prompt.md",
         "skills/mcp-builder/**",
         "skills/agent-governance/**",
         "skills/agentic-eval/**"

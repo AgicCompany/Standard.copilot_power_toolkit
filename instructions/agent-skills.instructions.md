@@ -129,8 +129,8 @@ For content quality principles (what to include and what to leave out), see [Wri
 ```markdown
 ## Prerequisites
 
-- [Playwright](https://playwright.dev/) installed: `npm install -D @playwright/test`
-- At least one browser engine installed: `npx playwright install chromium`
+- [Playwright](https://playwright.dev/) installed: `pnpm add -D @playwright/test`
+- At least one browser engine installed: `pnpm exec playwright install chromium`
 ```
 
 **`## Step-by-Step Workflows`** — Numbered steps for repeatable procedures where sequence matters (build, deploy, environment setup). Describe WHAT to accomplish at each stage, not hardcoded file paths or line numbers — steps should be adaptable to different project structures. For complex workflows (>5 steps), split into `references/` files and link to them.
@@ -140,9 +140,9 @@ For content quality principles (what to include and what to leave out), see [Wri
 
 ### Deploy to Staging
 
-1. Build the project: `npm run build`
-2. Run pre-deploy validation: `npm run validate`
-3. Deploy to staging: `npm run deploy -- --env staging`
+1. Build the project: `pnpm run build`
+2. Run pre-deploy validation: `pnpm run validate`
+3. Deploy to staging: `pnpm run deploy --env staging` (spelled out: bare `pnpm deploy` is a built-in pnpm command, not your script)
 4. Verify the health endpoint returns 200
 ```
 
@@ -164,7 +164,7 @@ For content quality principles (what to include and what to leave out), see [Wri
 
 | Issue | Solution |
 |-------|----------|
-| Plugin won't connect | Check servers are running (`npm run start:all`) |
+| Plugin won't connect | Check servers are running (`pnpm run start:all`) |
 | Browser blocks localhost | Allow local network access, or try a different browser |
 | Tool execution times out | Ensure the plugin UI is open and shows "Connected" |
 ```

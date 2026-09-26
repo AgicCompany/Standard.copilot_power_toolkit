@@ -62,7 +62,7 @@ full rationale before adding new root-level or always-applying content.
 ├── prompts/         # On-demand slash-command templates (*.prompt.md)
 ├── skills/          # Bundled task skills, folder + SKILL.md
 ├── hooks/           # Session-lifecycle automation, FLAT {name}.json + {name}.README.md + scripts/
-├── docs/            # Runbooks, workflow authority, mcp-servers.md, project-memory.md, and
+├── docs/            # Runbooks, workflow authority, mcp-servers.md, project-memory.template.md, and
 │                    # docs/examples/ (not copied to targets)
 ├── tools/           # apply-baseline.ps1, lint-baseline.ps1 (not copied to targets)
 └── ISSUE_TEMPLATE/  # GitHub issue templates carried into target projects
@@ -170,10 +170,13 @@ full rationale before adding new root-level or always-applying content.
   references must be `server-name/*` or `server-name/tool-id` — a bare name with no `/` does not
   resolve to an MCP tool and is silently dropped by VS Code, no error. See `docs/mcp-servers.md` for
   what's configured, what's a known-documented gap, and how to add a new server.
+- **Pin every locally launched server to an exact version, never `@latest`.** These start
+  automatically on every developer's machine; `@latest` lets a vendor ship an unreviewed build —
+  including a prerelease — into every project. `docs/mcp-servers.md` has the bump procedure.
 - This file lives outside `.github/` on purpose (VS Code only reads workspace MCP config from
   `.vscode/mcp.json` at the project root) — `tools/apply-baseline.ps1` places it there specially.
 
-### Memory (`docs/project-memory.md`)
+### Memory (`.github/docs/project-memory.md` in a project)
 - Copilot has no built-in persistent memory. `instructions/memory.instructions.md` makes the concept
   real by pointing at this concrete file and telling agents to read it before non-trivial work and
   append durable facts/corrections to it. If you touch the memory instructions, keep them pointing at

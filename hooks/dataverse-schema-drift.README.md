@@ -29,10 +29,15 @@ At session start, compares the last-modified time of `power.config.json` against
 `sessionStart` parses and injects into the session — telling Copilot that:
 
 - generated services may not match the current data sources,
-- regenerating means **delete + re-add the data source** (no refresh exists),
+- regenerating is `pa app refresh data-source --name <name>`,
 - it should not "fix" generated files by hand.
 
-Silent when the project has no `power.config.json` (non-Power-Apps project) or no `src/generated/`.
+It also **speaks** when `power.config.json` exists but `src/generated/` does not — the typed
+services were never generated, so it says to run `pa app add data-source` before writing data access
+code.
+
+Silent when the project has no `power.config.json` (not a Code App), when `src/generated/` exists but
+is empty, when there is no drift, and — in the bash mirror — when `jq` is not installed.
 
 ## Why mtime and not a content hash
 

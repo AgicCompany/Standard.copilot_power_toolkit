@@ -46,7 +46,7 @@ into your project automatically. To install standalone:
 cp governance-audit.json your-repo/.github/hooks/
 cp scripts/audit-*.sh scripts/audit-*.ps1 your-repo/.github/hooks/scripts/
 chmod +x your-repo/.github/hooks/scripts/audit-*.sh
-mkdir -p logs/copilot/governance && echo "logs/" >> .gitignore
+mkdir -p logs/copilot/governance
 ```
 
 ## Configuration
@@ -70,7 +70,9 @@ Events are written to `logs/copilot/governance/audit.log` in JSON Lines format:
 
 ## Privacy & Security
 
-- Full prompts are **never** logged — only matched threat patterns (minimal evidence snippets) and metadata are recorded
-- Add `logs/` to `.gitignore` to keep audit data local
+- Full prompts are **never** logged — only matched threat patterns (minimal evidence snippets) and metadata are recorded.
+  A `credential_exposure` match *is* the secret, so its evidence is redacted to the first and last 4 characters
+  (or `[REDACTED]`), the same rule `secrets-scanner` uses
+- `logs/copilot/.gitignore` is created automatically on first run, so logs stay out of git — delete it only if you deliberately want to commit them
 - Set `SKIP_GOVERNANCE_AUDIT=true` to disable entirely
 - All data stays local — no external network calls

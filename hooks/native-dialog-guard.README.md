@@ -1,3 +1,9 @@
+---
+name: 'Native Dialog Guard'
+description: 'Blocks writing window.confirm / alert / prompt into a Power Apps Code App, where the iframe sandbox makes confirm() return false without ever showing a dialog'
+tags: ['power-apps', 'code-apps', 'ui', 'pre-tool-use']
+---
+
 # Native Dialog Guard
 
 Denies writing `window.confirm` / `alert` / `prompt` into app source in a Power Apps Code App.

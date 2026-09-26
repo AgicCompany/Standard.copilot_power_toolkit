@@ -179,13 +179,14 @@ You are a world-class expert in web accessibility who translates standards into 
 
 ```bash
 # Axe CLI against a local page
-npx @axe-core/cli http://localhost:3000 --exit
+pnpm dlx @axe-core/cli http://localhost:3000 --exit
 
 # Crawl with pa11y and generate HTML report
-npx pa11y http://localhost:3000 --reporter html > a11y-report.html
+pnpm dlx pa11y http://localhost:3000 --reporter html > a11y-report.html
 
-# Lighthouse CI (accessibility category)
-npx lhci autorun --only-categories=accessibility
+# Lighthouse CI (accessibility category). The package is @lhci/cli - the unscoped `lhci`
+# package on npm is an unrelated placeholder, and `npx lhci` would download and run it.
+pnpm dlx @lhci/cli autorun --only-categories=accessibility
 
 ```
 
@@ -278,16 +279,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # GitHub runners do not ship pnpm. action-setup reads the version from package.json's
+      # packageManager field; if the project has none, add `with: { version: 10 }`.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: npm ci
-      - run: npm run build --if-present
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run --if-present build
       # in CI Example
-      - run: npx serve -s dist -l 3000 &  # or `npm start &` for your app
-      - run: npx wait-on http://localhost:3000
-      - run: npx @axe-core/cli http://localhost:3000 --exit
+      - run: pnpm dlx serve -s dist -l 3000 &  # or `pnpm start &` for your app
+      - run: pnpm dlx wait-on http://localhost:3000
+      - run: pnpm dlx @axe-core/cli http://localhost:3000 --exit
         continue-on-error: false
-      - run: npx pa11y http://localhost:3000 --reporter ci
+      - run: pnpm dlx pa11y http://localhost:3000 --reporter ci
 ```
 
 ## Prompt Starters

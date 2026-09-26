@@ -29,10 +29,10 @@ tests that mock at the service boundary pass too. It surfaces at runtime as a Da
 a missing column or an unset required field — often partially, where some records save and some do
 not — while the code you are reading looks entirely correct.
 
-There is a `dataverse-schema-drift` hook that performs the same comparison, but **its output does not
-reach you**: `additionalContext` from a `sessionStart` hook is not delivered in VS Code Copilot Chat
-(measured 2026-08-01, see `docs/reference/hook-payloads.md`). Its log is useful to a human; it is not
-a substitute for you checking. Do not assume something upstream has warned you.
+There is also a `dataverse-schema-drift` hook that runs the same comparison when the session starts,
+and if it finds drift the warning appears in your starting context. **Check anyway.** It runs once,
+at session start, so a data source added or a schema changed during the session is invisible to it —
+and the absence of a warning is not evidence that nothing drifted.
 
 Regeneration is one command:
 

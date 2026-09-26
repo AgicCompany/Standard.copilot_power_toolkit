@@ -45,6 +45,19 @@ $null = [Console]::In.ReadToEnd()
 # block the tool call outright.
 
 try { New-Item -ItemType Directory -Path 'logs/copilot/governance' -Force -ErrorAction Stop | Out-Null } catch { }
+
+# logs/ is not in a project's .gitignore by default, and these files hold prompt fragments, file
+# paths and commands. Make the folder ignore itself: it never edits the project's own .gitignore and
+# works however the baseline was installed. Delete logs/copilot/.gitignore to commit logs on purpose.
+try {
+  $ignorePath = [System.IO.Path]::Combine((Get-Location).ProviderPath, 'logs', 'copilot', '.gitignore')
+  if (-not (Test-Path -LiteralPath $ignorePath)) {
+    $ignoreText = "# Created by the Copilot baseline hooks. These logs can hold prompt fragments,`n" +
+      "# file paths and commands - they are not for version control. Delete this file only`n" +
+      "# if you deliberately want to commit them.`n*`n"
+    [System.IO.File]::WriteAllText($ignorePath, $ignoreText)
+  }
+} catch { }
 $Timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 $Cwd = (Get-Location).Path
 $Level = if ($env:GOVERNANCE_LEVEL) { $env:GOVERNANCE_LEVEL } else { 'standard' }

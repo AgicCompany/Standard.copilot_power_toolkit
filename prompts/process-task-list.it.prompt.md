@@ -19,7 +19,7 @@ Linee guida per la gestione delle task list in file markdown per monitorare i pr
   2. Se **tutti** i sotto-task sotto un task principale sono ora `[x]`, segna anche il **task principale** come completato.  
 - **Protocollo di Esecuzione:**
   1. Se il progetto è sotto controllo di versione (git), verifica lo stato del repository git
-  2. lo stato di git deve essere 'porcelain'
+  2. il working tree deve essere pulito: `git status --porcelain` non deve restituire nulla
   3. Se ci sono file modificati e non committati, chiedere conferma all'utente su come procedere
   4. Usa sempre le prassi indicate nel file `.github/instructions/git.instructions.md`
   5. Fai un commit per ogni task
@@ -47,7 +47,7 @@ Quando lavora con le task list, l'AI deve:
 4. Mantenere la sezione "File Rilevanti" accurata e aggiornata.
 5. Prima di iniziare il lavoro, controllare quale sotto-task è il prossimo.
 6. Se il progetto è sotto controllo di versione (git), verifica lo stato del repository git
-7. lo stato di git deve essere 'porcelain'
+7. il working tree deve essere pulito: `git status --porcelain` non deve restituire nulla
 8. Se ci sono file modificati e non committati, chiedere conferma all'utente su come procedere
 9. Usa sempre le prassi indicate nel file `.github/instructions/git.instructions.md`
 10. Fai un commit per ogni task
