@@ -1,0 +1,26 @@
+# vite-env-guard allowlist - PROJECT OWNED
+#
+# One variable name per line. `#` starts a comment. Names are matched case-insensitively and must be
+# EXACT - no wildcards, on purpose, so every exception is a deliberate, reviewable line.
+#
+# This file is seeded once by apply-baseline.ps1 and never overwritten, so entries survive a re-sync.
+# The guard re-reads it on every invocation: an addition applies to your next tool call, no reload.
+#
+# Add a name here when the value is genuinely public despite matching a secret-ish name pattern.
+#
+# The two entries below are seeded live, not as examples: both are public by design in every project,
+# so there is no judgement call to make and no reason to make each project rediscover it. Delete them
+# if you do not use those services.
+#
+# Application Insights: ingestion-only. Write access to telemetry, read access to nothing. It must
+# ship in the bundle for client-side telemetry to work at all.
+VITE_APPLICATIONINSIGHTS_CONNECTION_STRING
+
+# Stripe: designed to be published. The one to protect is the sk_ secret key, which is not a VITE_ var.
+VITE_STRIPE_PUBLISHABLE_KEY
+#
+# NEVER resolve a block by renaming the variable until the guard stops firing. That removes the
+# guard for that value permanently and leaves no record that anyone decided anything. A named line
+# here shows up in a PR diff; a rename does not.
+#
+# If you are not certain a value is public, it is not public. Ask.

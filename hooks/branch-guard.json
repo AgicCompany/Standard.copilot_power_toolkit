@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "//": "sessionStart, NOT userPromptSubmitted. Only sessionStart has parsed stdout, so it is the only event whose additionalContext reaches the model - userPromptSubmitted stdout is ignored. See docs/reference/hook-payloads.md. Consequence: the check runs once per chat, which is the right granularity anyway since branches rarely change mid-conversation.",
+  "//2": "NO matcher. Matchers filter on tool name, differ per host, and fail OPEN on a mismatch.",
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/check-branch-state.sh",
+        "powershell": ".github/hooks/scripts/check-branch-state.ps1",
+        "cwd": ".",
+        "env": {
+          "PROTECTED_BRANCHES": "main,master,develop"
+        },
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

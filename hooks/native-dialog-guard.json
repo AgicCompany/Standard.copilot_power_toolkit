@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "//": "NO matcher on purpose - same reasoning as vite-env-guard.json. A host-level matcher filters",
+  "//2": "on the tool NAME, names differ between hosts and versions, and a matcher that does not match",
+  "//3": "silently disables the hook. The script filters on file extension and content instead.",
+  "//4": "",
+  "//5": "This is a HOOK rather than an instruction because the instruction was ignored four times on",
+  "//6": "2026-08-01/02, the last time explicitly: 'despite the baseline instructions naming them as",
+  "//7": "the styling authority - I used a native window.confirm()'. A denial is the only mechanism in",
+  "//8": "this baseline that has never been talked around. See docs/reference/hook-payloads.md.",
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/guard-native-dialogs.sh",
+        "powershell": ".github/hooks/scripts/guard-native-dialogs.ps1",
+        "cwd": ".",
+        "env": {
+          "DIALOG_GUARD_MODE": "block"
+        },
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

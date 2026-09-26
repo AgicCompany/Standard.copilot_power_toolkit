@@ -1,0 +1,22 @@
+# Line endings are not cosmetic in this repository - two file types break outright if git rewrites
+# them on checkout, and core.autocrlf=true (the Windows default) will do exactly that.
+
+# Normalise everything to LF in the repository and on checkout.
+* text=auto eol=lf
+
+# Shell hooks MUST be LF. With CRLF the shebang becomes "#!/usr/bin/env bash\r", the kernel looks for
+# an interpreter literally named "bash\r", and every bash hook dies with "bad interpreter: No such
+# file or directory". Nothing in the acceptance test catches this because it only appears after a
+# clone on a machine with autocrlf enabled - which is every Windows machine by default.
+*.sh text eol=lf
+
+# PowerShell hook scripts are pure ASCII with a UTF-8 BOM - Windows PowerShell 5.1, which the Copilot
+# host uses, reads BOM-less files as cp1252 and mojibake breaks string terminators. Git does not
+# touch the BOM, but pin the endings so a clone matches the bytes that were actually tested.
+*.ps1 text eol=lf
+
+# Never convert these.
+*.png binary
+*.jpg binary
+*.ico binary
+*.gif binary

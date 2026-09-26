@@ -1,0 +1,186 @@
+{
+  "//": "Profile manifest for tools/apply-baseline.ps1. Nothing here deletes anything from the",
+  "//2": "baseline — profiles only decide which assets are COPIED into a target project. An asset",
+  "//3": "that appears in no profile still lives in .github_general and is still linted; it just",
+  "//4": "isn't pushed into projects that have no use for it. Add new project types by adding a",
+  "//5": "profile, not by deleting assets.",
+  "//6": "Patterns are baseline-relative, forward-slash, case-insensitive. '**' matches any depth,",
+  "//7": "'*' matches within one path segment.",
+  "//10": "'.github/**' in alwaysExcluded is THIS repo's own CI, not content for target projects. It runs tools/lint-baseline.ps1, and tools/ is itself excluded - so copying it would hand every project a workflow that fails on its first run.",
+  "alwaysExcluded": [
+    "tools/**",
+    ".github/**",
+    ".gitignore",
+    ".gitattributes",
+    "LICENSE",
+    "docs/examples/**",
+    "USAGE_APPLY_ANY_PROJECT.md",
+    "AGENTS.md",
+    "INSTALLER.md",
+    "logs/**",
+    ".claude/**",
+    ".git/**",
+    "**/.DS_Store"
+  ],
+  "//8": "Copied by every profile: the always-loaded core, safety policy, issue templates, the full",
+  "//9": "hook set (small, deterministic, universally useful), and MCP config.",
+  "//ui": "UI LIBRARY VARIANTS. shadcn-ui and fluent-ui-v9 both declare applyTo '**/*.{tsx,jsx}', so",
+  "//ui2": "shipping both puts two competing design systems in front of Copilot on every component",
+  "//ui3": "file with nothing to arbitrate. apply-baseline.ps1 -Ui <name> applies one of these on top",
+  "//ui4": "of the resolved profile; lint-baseline.ps1 reads the same table so these files do not",
+  "//ui5": "register as orphans. shadcn is the default when -Ui is omitted.",
+  "uiVariants": {
+    "shadcn": {
+      "add": [],
+      "remove": [
+        "instructions/fluent-ui-v9.instructions.md"
+      ]
+    },
+    "fluent": {
+      "add": [
+        "instructions/fluent-ui-v9.instructions.md"
+      ],
+      "remove": [
+        "instructions/shadcn-ui.instructions.md",
+        "instructions/tailwind-v4-vite.instructions.md",
+        "docs/reference/shadcn-setup.md"
+      ]
+    }
+  },
+  "common": [
+    "copilot-instructions.template.md",
+    "project-context.template.md",
+    "vite-env-guard.allow.template",
+    "GOVERNANCE_MATRIX.md",
+    "SAFETY_GUARDRAILS.md",
+    "README.md",
+    "QUICK_REFERENCE.md",
+    "ISSUE_TEMPLATE/**",
+    ".vscode/**",
+    "hooks/**",
+    "docs/reference/hook-payloads.md",
+    "docs/reference/event-probe.md",
+    "docs/reference/copilot-memory-tiers.md",
+    "skills/README.md",
+    "docs/WORKFLOW_AUTHORITY.md",
+    "docs/project-memory.template.md",
+    "docs/mcp-servers.md",
+    "instructions/general-coding.instructions.md",
+    "instructions/memory.instructions.md",
+    "instructions/context-engineering.instructions.md",
+    "instructions/git.instructions.md",
+    "instructions/gitflow.instructions.md",
+    "instructions/github-actions.instructions.md",
+    "prompts/session-kickoff.prompt.md",
+    "prompts/new-chat-bootstrap.prompt.md",
+    "prompts/setup.prompt.md",
+    "agents/plan.agent.md",
+    "agents/small-plan.agent.md",
+    "agents/review.agent.md",
+    "agents/delivery.agent.md"
+  ],
+  "profiles": {
+    "react-vite": {
+      "description": "React + TypeScript + Vite web app. Tailwind v4 + shadcn/ui, Vitest, Playwright. No Power Platform, Azure, or C# assets.",
+      "include": [
+        "instructions/react-ts.instructions.md",
+        "instructions/tailwind-v4-vite.instructions.md",
+        "instructions/shadcn-ui.instructions.md",
+        "instructions/data-fetching.instructions.md",
+        "instructions/forms-and-validation.instructions.md",
+        "instructions/error-handling.instructions.md",
+        "instructions/vite-env-and-secrets.instructions.md",
+        "instructions/vitest-react-testing.instructions.md",
+        "instructions/playwright-typescript.instructions.md",
+        "instructions/a11y.instructions.md",
+        "instructions/performance-optimization.instructions.md",
+        "docs/reference/a11y-anti-patterns.md",
+        "docs/reference/shadcn-setup.md",
+        "docs/reference/performance-anti-patterns.md",
+        "docs/reference/url-state.md",
+        "docs/release-checklist.md",
+        "agents/checklist.agent.md",
+        "agents/debug.agent.md",
+        "agents/tdd.agent.md",
+        "agents/accessibility.agent.md",
+        "agents/prd.agent.md",
+        "prompts/code-review.prompt.md",
+        "prompts/code-review-checklist.prompt.md",
+        "prompts/create-prd.prompt.md",
+        "prompts/create-prd.it.prompt.md",
+        "prompts/generate-tasks.prompt.md",
+        "prompts/generate-tasks.it.prompt.md",
+        "prompts/process-task-list.prompt.md",
+        "prompts/process-task-list.it.prompt.md",
+        "prompts/git.prompt.md",
+        "prompts/e2e-test.prompt.md",
+        "prompts/tech-stack.prompt.md",
+        "skills/frontend-design/**",
+        "skills/component-scaffold/**",
+        "eslint/**"
+      ]
+    },
+    "power-apps-code-app": {
+      "description": "Power Apps Code App: everything in react-vite plus Dataverse, Power Platform, Canvas parity, and App Insights assets.",
+      "extends": "react-vite",
+      "include": [
+        "instructions/power-apps-code-apps.instructions.md",
+        "instructions/dataverse-plugins.instructions.md",
+        "instructions/csharp-dotnet.instructions.md",
+        "docs/reference/dataverse-transactional-writes.md",
+        "skills/custom-api-authoring/**",
+        "instructions/power-apps-canvas-yaml.instructions.md",
+        "docs/reference/power-apps-canvas-yaml.md",
+        "instructions/devops-core-principles.instructions.md",
+        "prompts/ado-pipelines.prompt.md",
+        "skills/canvas-design/**",
+        "instructions/work-items.instructions.md",
+        "docs/reference/power-apps-code-apps-reference.md",
+        "docs/datasource-onboarding.md",
+        "agents/dataverse-expert.agent.md",
+        "agents/power-platform-expert.agent.md",
+        "agents/canvas-migration-guide.agent.md",
+        "agents/parity-auditor.agent.md",
+        "agents/devops.agent.md",
+        "prompts/parity-audit.prompt.md",
+        "prompts/migration-slice.prompt.md",
+        "prompts/devops.prompt.md",
+        "skills/power-apps-code-app-scaffold/**",
+        "skills/dataverse-schema-validator/**",
+        "skills/dataverse-typed-client/**",
+        "skills/code-app-deploy/**",
+        "skills/lock-semantics-expert/**",
+        "skills/appinsights-instrumentation/**"
+      ]
+    },
+    "baseline-authoring": {
+      "description": "For working on .github_general itself or another Copilot config repo: meta-authoring guides for agents, instructions, prompts, skills and hooks, plus repo-architect.",
+      "//": "tdd and checklist ship here not because a .github repo runs Vitest, but because plan, small-plan, review and delivery all come from 'common' and hand off to them. A handoff to an agent the profile does not ship renders a button that silently does nothing (instructions/agents.instructions.md). lint-baseline.ps1 warns on it.",
+      "include": [
+        "instructions/agents.instructions.md",
+        "instructions/instructions.instructions.md",
+        "instructions/prompt.instructions.md",
+        "instructions/agent-skills.instructions.md",
+        "instructions/hooks.instructions.md",
+        "instructions/agent-safety.instructions.md",
+        "PROGRESSIVE_DISCLOSURE.md",
+        "ISSUE_TEMPLATE_PROGRESSIVE_DISCLOSURE.md",
+        "docs/baseline-acceptance-test.md",
+        "agents/repo-architect.agent.md",
+        "agents/lyra.agent.md",
+        "agents/tdd.agent.md",
+        "agents/checklist.agent.md",
+        "prompts/tech-stack.prompt.md",
+        "skills/mcp-builder/**",
+        "skills/agent-governance/**",
+        "skills/agentic-eval/**"
+      ]
+    },
+    "full": {
+      "description": "Everything in the baseline (minus alwaysExcluded). Escape hatch preserving the pre-profile behaviour — includes C#/.NET, Bicep, ADO pipelines, Azure and docx assets.",
+      "include": [
+        "**"
+      ]
+    }
+  }
+}

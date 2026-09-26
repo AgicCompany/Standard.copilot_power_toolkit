@@ -1,0 +1,14 @@
+# Machine-local Claude Code settings - permissions and preferences for this machine only.
+.claude/
+
+# Hook output. logs/copilot/ is written by the hooks themselves whenever a script is run from this
+# folder (e.g. testing a hook in place). Runtime output, never source.
+logs/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+
+# Throwaway probe folders (SDK experiments, scratch tests)
+_sdk-probe/

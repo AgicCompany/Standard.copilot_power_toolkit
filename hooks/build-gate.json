@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "//events": "Event names are HOST-SPECIFIC. Verified live in VS Code Copilot Chat by registering both casings and observing which fired: PostToolUse fires, postToolUse does NOT. sessionEnd and SessionEnd never fire (even after a full VS Code quit); Stop fires after every completed turn. camelCase sessionStart/preToolUse/userPromptSubmitted do fire. Register BOTH spellings so the hook works on either host - a duplicate fire is harmless, a missed one is silent. See docs/reference/hook-payloads.md.",
+  "hooks": {
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/build-gate.sh",
+        "powershell": ".github/hooks/scripts/build-gate.ps1",
+        "cwd": ".",
+        "env": {
+          "GATE_MODE": "warn",
+          "GATE_RUN_LINT": "true"
+        },
+        "timeoutSec": 120
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "bash": ".github/hooks/scripts/build-gate.sh",
+        "powershell": ".github/hooks/scripts/build-gate.ps1",
+        "cwd": ".",
+        "env": {
+          "GATE_MODE": "warn",
+          "GATE_RUN_LINT": "true"
+        },
+        "timeoutSec": 120
+      }
+    ]
+  }
+}
