@@ -96,12 +96,22 @@ $Patterns = @(
   @{ Regex = '(aws_access_key|AKIA[0-9A-Z]{16})'; Category = 'credential_exposure'; Severity = 0.95; Description = 'AWS key exposure' }
 )
 
-# Replaces every credential-shaped substring with its first and last 4 characters, or [REDACTED]
+# What must never be written to the log is a different, deliberately wider question than the
+# detection table's "is this a threat": "could any of this be a secret". Reusing the detection
+# patterns for it leaked: \w{8,} stops at the first hyphen or dot, so password=abcdefgh-LEAKME9876
+# logged "-LEAKME9876" and a JWT logged everything after its header. So: the whole value after the
+# key, up to whitespace or the closing quote (an escaped quote does not close it; one left open by
+# a truncated match runs to the end), plus bare JWTs and AWS key IDs anywhere.
+#
+# Every secret-shaped substring is replaced with its first and last 4 characters, or [REDACTED]
 # when there are too few to hide anything - the same rule scan-secrets uses. Applied to the evidence
 # of EVERY category, not just credential_exposure: a greedy pattern such as "export .* to external"
 # captures whatever lies between its anchors, and once captured a password was logged whole.
-# The patterns come from the table above, so detection and redaction cannot drift apart.
-$CredentialRegexes = @($Patterns | Where-Object { $_.Category -eq 'credential_exposure' } | ForEach-Object { $_.Regex })
+$CredentialRegexes = @(
+  '(api[_-]?key|secret([_-]?key)?|password|passwd|pwd|token)\s*[:=]\s*("(?:[^"\\]|\\.)*"?|''(?:[^''\\]|\\.)*''?|[^\s''"]+)'
+  'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'
+  'AKIA[0-9A-Z]{16}'
+)
 function Hide-Credentials {
   param([string]$Text)
   foreach ($rx in $CredentialRegexes) {

@@ -74,6 +74,16 @@ function Write-GuardLog {
 
 if ($env:SKIP_DIALOG_GUARD -eq 'true') { exit 0 }
 
+# Only a Code App needs this. There confirm() runs inside an iframe sandboxed without allow-modals
+# and silently returns false - a functional failure, which is what earned a blocking hook. In a
+# plain React app confirm() works; preferring the UI library's dialog there is a convention the
+# instruction layer carries. Code Apps are recognised as dataverse-schema-drift does it.
+$configPath = if ($env:POWER_CONFIG) { $env:POWER_CONFIG } else { 'power.config.json' }
+if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+  Write-GuardLog -EventName 'not_a_code_app' -FilePath '' -Calls @() -Mode 'n/a'
+  exit 0
+}
+
 $raw = [Console]::In.ReadToEnd()
 if ([string]::IsNullOrWhiteSpace($raw)) { exit 0 }
 try { $payload = $raw | ConvertFrom-Json } catch { exit 0 }

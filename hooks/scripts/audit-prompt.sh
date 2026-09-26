@@ -58,19 +58,32 @@ fi
 # Each pattern has: category, description, severity (0.0-1.0)
 THREATS_FOUND=()
 
-# The credential patterns, defined once: the detector below uses them, and so does the redaction.
+# The credential patterns the detector uses to decide "is this a threat".
 CRED_PATTERNS=(
   "(api[_-]?key|secret[_-]?key|password|token)\s*[:=]\s*['\"]?\w{8,}"
   "(aws_access_key|AKIA[0-9A-Z]{16})"
 )
 
-# Replaces every credential-shaped substring with its first and last 4 characters, or [REDACTED]
+# What must never be written to the log is a different, deliberately wider question: "could any of
+# this be a secret". Reusing the detection patterns for it leaked: \w{8,} stops at the first
+# hyphen or dot, so password=abcdefgh-LEAKME9876 logged "-LEAKME9876" and a JWT logged everything
+# after its header. So: the whole value after the key, up to whitespace or the closing quote (an
+# escaped quote does not close it; one left open by a truncated match runs to the end), plus bare
+# JWTs and AWS key IDs anywhere.
+SQ="'"
+REDACT_PATTERNS=(
+  "(api[_-]?key|secret([_-]?key)?|password|passwd|pwd|token)[[:space:]]*[:=][[:space:]]*(\"([^\"\\\\]|\\\\.)*\"?|${SQ}([^${SQ}\\\\]|\\\\.)*${SQ}?|[^[:space:]${SQ}\"]+)"
+  "eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"
+  "AKIA[0-9A-Z]{16}"
+)
+
+# Replaces every secret-shaped substring with its first and last 4 characters, or [REDACTED]
 # when there are too few to hide anything - the same rule scan-secrets uses. Applied to the evidence
 # of EVERY category, not just credential_exposure: a greedy pattern such as "export .* to external"
 # captures whatever lies between its anchors, and once captured a password was logged whole.
 redact_credentials() {
   local text="$1" p m r
-  for p in "${CRED_PATTERNS[@]}"; do
+  for p in "${REDACT_PATTERNS[@]}"; do
     while IFS= read -r m; do
       [[ -z "$m" ]] && continue
       if (( ${#m} <= 12 )); then r="[REDACTED]"; else r="${m:0:4}...${m: -4}"; fi

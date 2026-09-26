@@ -71,8 +71,11 @@ Events are written to `logs/copilot/governance/audit.log` in JSON Lines format:
 ## Privacy & Security
 
 - Full prompts are **never** logged — only matched threat patterns (minimal evidence snippets) and metadata are recorded.
-  A `credential_exposure` match *is* the secret, so its evidence is redacted to the first and last 4 characters
-  (or `[REDACTED]`), the same rule `secrets-scanner` uses
+  Before any evidence is written, every secret-shaped substring in it is redacted to its first and last 4
+  characters (or `[REDACTED]`), the same rule `secrets-scanner` uses. That applies to every category, since a
+  greedy pattern such as `export .* to external` can capture a password too. Redaction deliberately matches
+  more than detection does: the whole value after `password=` / `token=` / `api_key=` / `secret=` (up to
+  whitespace, or the closing quote), plus bare JWTs and AWS key IDs anywhere
 - `logs/copilot/.gitignore` is created automatically on first run, so logs stay out of git — delete it only if you deliberately want to commit them
 - Set `SKIP_GOVERNANCE_AUDIT=true` to disable entirely
 - All data stays local — no external network calls

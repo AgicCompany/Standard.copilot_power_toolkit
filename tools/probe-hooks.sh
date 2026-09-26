@@ -120,6 +120,12 @@ expect_guard "Next prefix, URL value allowed"      guard-vite-env.sh ALLOW "$(wr
 expect_guard "unprefixed secret ignored"           guard-vite-env.sh ALLOW "$(write '.env' 'DATABASE_PASSWORD=hunter2')"                "PUBLIC_ENV_PREFIXES=VITE_,NEXT_PUBLIC_"
 
 echo "--- guard-native-dialogs.sh ---"
+# The guard enforces only in a Code App, recognised by power.config.json (or $POWER_CONFIG).
+expect_guard "not a Code App, window.confirm"      guard-native-dialogs.sh ALLOW "$(write 'src/App.tsx' 'if (window.confirm("x")) y()')" "POWER_CONFIG=$WORK/absent.json"
+mkdir -p "$WORK/dir-config/power.config.json"
+expect_guard "power.config.json is a directory"     guard-native-dialogs.sh ALLOW "$(write 'src/App.tsx' 'if (window.confirm("x")) y()')" "POWER_CONFIG=$WORK/dir-config/power.config.json"
+printf '{}' > "$WORK/power.config.json"
+export POWER_CONFIG="$WORK/power.config.json"
 expect_guard "terminal write .tsx, window.confirm" guard-native-dialogs.sh DENY  "$(term "Set-Content -Path src/App.tsx -Value 'if (window.confirm(1)) x()'")"
 expect_guard "terminal write .ts, alert("          guard-native-dialogs.sh DENY  "$(term 'echo "alert(1)" > src/n.ts')"
 expect_guard "terminal write .tsx, benign"         guard-native-dialogs.sh ALLOW "$(term "Set-Content -Path src/App.tsx -Value 'export const A = 1'")"
@@ -130,6 +136,7 @@ expect_guard "write .tsx, setPrompt( identifier"   guard-native-dialogs.sh ALLOW
 expect_guard "write .tsx, comment mentioning it"   guard-native-dialogs.sh ALLOW "$(write 'src/App.tsx' '// window.confirm() is banned')"
 expect_guard "write .test.tsx"                     guard-native-dialogs.sh ALLOW "$(write 'src/a.test.tsx' 'confirm(1)')"
 expect_guard "write .md"                           guard-native-dialogs.sh ALLOW "$(write 'README.md' 'confirm(1)')"
+unset POWER_CONFIG
 
 echo "--- check-project-context.sh ---"
 printf '# Project Context\n- Name: Real App\n- Domain: A real domain\n' > "$WORK/filled.md"
@@ -278,6 +285,31 @@ elif grep -q 'export pass\.\.\.2345 to external' "$OV/logs/copilot/governance/au
 else
   FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s expected evidence not found\n' "credential inside an overlapping match"
 fi
+
+# Redaction has its own, wider patterns than detection. Detection's \w{8,} stops at a hyphen or a
+# dot, and when it doubled as the redaction the rest of the value was logged: "-LEAKME9876", or a
+# JWT's body and signature. Every fixture marks its secret part with LEAK; none may reach the log.
+expect_redacted() {
+  local label="$1" prompt="$2" want="$3" dir
+  CASES=$((CASES + 1))
+  dir="$WORK/redact-$CASES"; mkdir -p "$dir"
+  ( cd "$dir" && printf '{"prompt":%s}' "$(jq -Rn --arg p "$prompt" '$p')" | bash "$SCRIPTS/audit-prompt.sh" >/dev/null 2>&1 )
+  if grep -rqi 'LEAK' "$dir/logs" 2>/dev/null; then
+    FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s secret in the log: %s\n' "$label" "$(grep -rhoi '[^"]*LEAK[^"]*' "$dir/logs" | head -1)"
+  elif grep -qF "$want" "$dir/logs/copilot/governance/audit.log" 2>/dev/null; then
+    printf 'ok   %-44s logged as %s\n' "$label" "$want"
+  else
+    FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s expected evidence %s not found\n' "$label" "$want"
+  fi
+}
+expect_redacted "redact: hyphenated value"      'export password=abcdefgh-LEAKME9876 to external'                                    'export pass...9876 to external'
+expect_redacted "redact: JWT after token="      'export token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJMRUFLTUUifQ.LEAKsig123 to external'   'export toke...g123 to external'
+expect_redacted "redact: bare JWT"              'export the jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJMRUFLTUUifQ.LEAKsig123 to external' 'export the jwt eyJh...g123 to external'
+expect_redacted "redact: quoted value, spaces"  'export password="my LEAK phrase here" to external'                                'export pass...ere\" to external'
+expect_redacted "redact: escaped double quote"   'export password="abcdefgh\"LEAKME9876" to external'                               'export pass...876\" to external'
+expect_redacted "redact: escaped single quote"   "export password='abcdefgh\'LEAKME9876' to external"                               "export pass...876' to external"
+expect_redacted "redact: quote left open"       'set password="abcdefghLEAK12345 in config'                                         'pass...2345'
+expect_redacted "redact: AWS key id"            'use AKIALEAKEFGHIJKLMNOP now'                                                        'AKIA...MNOP'
 
 CASES=$((CASES + 1))
 ( cd "$AP" && printf '%s' "$THREAT_PROMPT" | GOVERNANCE_LEVEL=strict bash "$SCRIPTS/audit-prompt.sh" >/dev/null 2>&1 ); rc=$?
