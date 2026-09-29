@@ -17,53 +17,72 @@ drift_log() {
 
 [[ "${SKIP_SCHEMA_DRIFT:-}" == "true" ]] && { drift_log skipped "SKIP_SCHEMA_DRIFT=true"; exit 0; }
 
-config_path="${POWER_CONFIG:-power.config.json}"
-generated_dir="${GENERATED_DIR:-src/generated}"
-
 # jq is how this script emits JSON. Without it the hook is silently inert, which is worth recording:
 # on a machine with no jq the warning simply never appears and nothing says why.
 command -v jq >/dev/null 2>&1 || { drift_log no_jq "jq not installed - hook inert"; exit 0; }
 
-# Not a Power Apps Code App, or codegen has never run - nothing to compare.
-[[ -f "$config_path" ]] || { drift_log not_a_code_app "no $config_path"; exit 0; }
-
-if [[ ! -d "$generated_dir" ]]; then
-  msg="Dataverse: '$config_path' exists but '$generated_dir' does not. If this app uses Dataverse data sources, the typed services have not been generated yet - run 'pa app add data-source' before writing data access code."
-  jq -n --arg ctx "$msg" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}'
-  drift_log emitted_no_generated_dir "$generated_dir"
-  exit 0
+# Which Code Apps does this repository hold? Not only the root: a multi-host template keeps its app in
+# src/frontend/power.config.json, and a root-only check stayed silent there for a whole live test.
+# pa generates each app's services in src/generated NEXT TO its power.config.json, so every app is
+# checked against its own folder. POWER_CONFIG (with optional GENERATED_DIR) pins a single app.
+configs=()
+if [[ -n "${POWER_CONFIG:-}" ]]; then
+  configs=("$POWER_CONFIG")
+else
+  while IFS= read -r c; do configs+=("${c#./}"); done < <(
+    find . -maxdepth 6 \( -name node_modules -o -name .git -o -name dist -o -name build \) -prune -o -type f -name power.config.json -print 2>/dev/null | LC_ALL=C sort)
 fi
+[[ ${#configs[@]} -eq 0 ]] && { drift_log not_a_code_app "no power.config.json"; exit 0; }
 
 # Portable mtime: GNU stat and BSD/macOS stat take different flags.
 mtime_of() {
   stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0
 }
 
-newest_generated=0
-while IFS= read -r -d '' f; do
-  t="$(mtime_of "$f")"
-  [[ "$t" -gt "$newest_generated" ]] && newest_generated="$t"
-done < <(find "$generated_dir" -type f -print0 2>/dev/null)
+messages=()
+for config_path in "${configs[@]}"; do
+  if [[ -n "${POWER_CONFIG:-}" && -n "${GENERATED_DIR:-}" ]]; then
+    generated_dir="$GENERATED_DIR"
+  else
+    app_dir="$(dirname "$config_path")"
+    if [[ "$app_dir" == "." ]]; then generated_dir="src/generated"; else generated_dir="$app_dir/src/generated"; fi
+  fi
 
-[[ "$newest_generated" -eq 0 ]] && { drift_log no_generated_files "$generated_dir"; exit 0; }
+  # Not a Power Apps Code App, or codegen has never run - nothing to compare.
+  [[ -f "$config_path" ]] || { drift_log not_a_code_app "no $config_path"; continue; }
 
-config_time="$(mtime_of "$config_path")"
-[[ "$config_time" -le "$newest_generated" ]] && { drift_log no_drift "config $config_time <= generated $newest_generated"; exit 0; }
+  if [[ ! -d "$generated_dir" ]]; then
+    messages+=("Dataverse: '$config_path' exists but '$generated_dir' does not. If this app uses Dataverse data sources, the typed services have not been generated yet - run 'pa app add data-source' before writing data access code.")
+    drift_log emitted_no_generated_dir "$generated_dir"
+    continue
+  fi
 
-drift_seconds=$(( config_time - newest_generated ))
-if [[ "$drift_seconds" -lt 3600 ]]; then
-  drift="less than an hour"
-elif [[ "$drift_seconds" -lt 172800 ]]; then
-  drift="$(( drift_seconds / 3600 )) hour(s)"
-else
-  drift="$(( drift_seconds / 86400 )) day(s)"
-fi
+  newest_generated=0
+  while IFS= read -r -d '' f; do
+    t="$(mtime_of "$f")"
+    [[ "$t" -gt "$newest_generated" ]] && newest_generated="$t"
+  done < <(find "$generated_dir" -type f -print0 2>/dev/null)
 
-# Keep this message word-for-word in sync with check-schema-drift.ps1. The two had silently diverged:
-# the .ps1 carried gate wording while this one still said "If data access misbehaves this session",
-# which is the advisory phrasing the measured A/B showed gets read and deprioritised. A mirror is not
-# verified by its twin - not for code, and not for the text that does the actual work.
-msg="Dataverse schema drift: '$config_path' was modified ${drift} AFTER the newest file in '$generated_dir', so the generated services may no longer match the configured data sources.
+  [[ "$newest_generated" -eq 0 ]] && { drift_log no_generated_files "$generated_dir"; continue; }
+
+  config_time="$(mtime_of "$config_path")"
+  [[ "$config_time" -le "$newest_generated" ]] && { drift_log no_drift "$config_path: config $config_time <= generated $newest_generated"; continue; }
+
+  drift_seconds=$(( config_time - newest_generated ))
+  if [[ "$drift_seconds" -lt 3600 ]]; then
+    drift="less than an hour"
+  elif [[ "$drift_seconds" -lt 172800 ]]; then
+    drift="$(( drift_seconds / 3600 )) hour(s)"
+  else
+    drift="$(( drift_seconds / 86400 )) day(s)"
+  fi
+
+  # Keep this message word-for-word in sync with check-schema-drift.ps1. The two had silently
+  # diverged twice: first the .ps1 carried gate wording while this one still said "If data access
+  # misbehaves this session" (the advisory phrasing the measured A/B showed gets deprioritised), then
+  # the .ps1 grew an extra opening paragraph. A mirror is not verified by its twin - not for code, and
+  # not for the text that does the actual work.
+  msg="Dataverse schema drift: '$config_path' was modified ${drift} AFTER the newest file in '$generated_dir', so the generated services may no longer match the configured data sources.
 
 STOP - ACT ON THIS BEFORE YOUR FIRST EDIT. This is a gate, not background information.
 
@@ -76,7 +95,17 @@ Why nothing else will catch it: generated types agree with themselves, so TypeSc
 Offer to regenerate with 'pa app refresh data-source --name <name>'. Never hand-edit '$generated_dir' - it is overwritten wholesale.
 
 If the task does not touch Dataverse, or the user says '$config_path' was changed for unrelated reasons, proceed without raising it again."
+  messages+=("$msg")
+  drift_log emitted_drift_warning "$config_path: $drift"
+done
 
-jq -n --arg ctx "$msg" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}'
-drift_log emitted_drift_warning "$drift"
-exit 0
+[[ ${#messages[@]} -eq 0 ]] && exit 0
+
+# One JSON document on stdout, whatever the number of apps: stdout is parsed on sessionStart.
+ctx="${messages[0]}"
+for m in "${messages[@]:1}"; do ctx="$ctx
+
+---
+
+$m"; done
+jq -n --arg ctx "$ctx" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}'

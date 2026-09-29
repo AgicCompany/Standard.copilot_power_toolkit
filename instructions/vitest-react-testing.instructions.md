@@ -45,7 +45,7 @@ because jsdom has no layout; it needs an e2e test" is a genuine result. Green te
 feature are worse than a stated gap.
 
 ## File Conventions
-- Colocate: `Component.tsx` → `Component.test.tsx` in the same folder.
+- Colocate: `account-card.tsx` → `account-card.test.tsx` in the same folder.
 - One test file per component/module/hook under test.
 - Config: `vitest.config.ts` (or the `test` block in `vite.config.ts`) with `environment: 'jsdom'`
   and a `vitest.setup.ts` that imports `@testing-library/jest-dom/vitest` — **not** the bare
@@ -77,7 +77,7 @@ feature are worse than a stated gap.
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ProjectCard } from './ProjectCard';
+import { ProjectCard } from './project-card';
 
 describe('ProjectCard', () => {
   it('shows the project name and opens detail view on click', async () => {

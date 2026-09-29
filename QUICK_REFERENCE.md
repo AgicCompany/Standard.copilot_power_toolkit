@@ -146,8 +146,9 @@ When writing instructions:
 
 ## Further Reading
 
-- Full guide: `.github/PROGRESSIVE_DISCLOSURE.md`
-- Structure guide: `.github/README.md`
+- Full guide: [PROGRESSIVE_DISCLOSURE.md](https://github.com/AgicCompany/Standard.copilot_power_toolkit/blob/main/PROGRESSIVE_DISCLOSURE.md)
+  and structure guide: [README.md](https://github.com/AgicCompany/Standard.copilot_power_toolkit/blob/main/README.md),
+  in the baseline's own repository (neither is copied into projects)
 - HumanLayer blog: https://www.hlyr.dev/blog/writing-a-good-claude-md
 - Copilot docs: https://docs.github.com/en/copilot
 

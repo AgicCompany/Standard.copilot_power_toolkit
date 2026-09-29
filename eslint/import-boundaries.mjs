@@ -9,12 +9,17 @@
 // judgement belongs in a check, not in prose — this is that check. Adapted from
 // https://github.com/alan2207/bulletproof-react (docs/project-structure.md).
 //
-// REQUIRES:  pnpm add -D eslint-plugin-import-x eslint-plugin-check-file
+// REQUIRES:  eslint-plugin-import-x and eslint-plugin-check-file as dev dependencies, installed with
+//            the package manager the project's lockfile shows.
 //
-// WIRE IT UP in the project's own eslint.config.js:
+// THIS FILE is for an app whose src/ sits at the repository root, with the plugins installed there.
+// Wire it up in the project's own eslint.config.js:
 //
 //   import boundaries from './.github/eslint/import-boundaries.mjs';
 //   export default [ ...yourExistingConfig, ...boundaries ];
+//
+// For an app in a subfolder (e.g. src/frontend/src/) use import-boundaries-app.mjs instead: it
+// loads the plugins from the app's own node_modules, which this file cannot.
 //
 // The project's eslint.config.js is project-owned; this file is baseline-owned and is replaced on
 // every `apply-baseline`. Do not edit it in a project — if a zone is wrong for your layout, say so
@@ -27,98 +32,30 @@ import { fileURLToPath } from 'node:url';
 import importX from 'eslint-plugin-import-x';
 import checkFile from 'eslint-plugin-check-file';
 
-const SRC = 'src';
+import { buildConfig, nestedFeaturesDir } from './boundaries-core.mjs';
 
-// Resolve from THIS file, not from process.cwd(). Running eslint from a subdirectory would otherwise
-// make the readdir below fail, return no features, and silently drop every cross-feature zone - a
-// guard that looks configured and enforces nothing. This file sits at .github/eslint/, so the
-// project root is two levels up.
-const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const FEATURES_DIR = path.join(PROJECT_ROOT, SRC, 'features');
+// The repository root, resolved from THIS file, not from process.cwd(): running eslint from a
+// subdirectory would otherwise read the wrong folder, find no features, and silently drop every
+// cross-feature zone - a guard that looks configured and enforces nothing. This file sits at
+// .github/eslint/, so the repository root is two levels up.
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-// Read the feature folders instead of listing them by hand. bulletproof-react enumerates one zone
-// per feature, which means every new feature needs a config edit that nobody remembers to make.
-function featureNames() {
-  try {
-    return fs
-      .readdirSync(FEATURES_DIR, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name);
-  } catch {
-    return []; // no features/ yet — a fresh scaffold, not an error
+// This wiring assumes src/ at the repository root. When it is not there but an app's src/features
+// exists further down, it would enforce nothing, silently. Say so once.
+if (!fs.existsSync(path.join(REPO_ROOT, 'src', 'features'))) {
+  const nested = nestedFeaturesDir(REPO_ROOT);
+  if (nested) {
+    console.warn(
+      `[import-boundaries] No src/features at the repository root, but found ${path.relative(REPO_ROOT, nested)}. ` +
+        'This wiring enforces nothing for that app. Use import-boundaries-app.mjs from an eslint.config.js ' +
+        'in the app folder (see its header).',
+    );
   }
 }
 
-// A feature may not reach into another feature. Compose them at the route/app layer instead.
-const crossFeatureZones = featureNames().map((name) => ({
-  target: `./${SRC}/features/${name}`,
-  from: `./${SRC}/features`,
-  except: [`./${name}`],
-  message:
-    'Features must not import from each other. Promote the shared piece to src/components, src/hooks or src/lib, and compose the features at the route layer.',
-}));
-
-// Unidirectional flow:  shared  ->  features  ->  routes/app
-// Anything lower in that chain must not reach upward.
-const layerZones = [
-  {
-    target: `./${SRC}/features`,
-    from: `./${SRC}/routes`,
-    message:
-      'A feature must not import from the route layer. Routes compose features, never the other way round.',
-  },
-  {
-    target: [
-      `./${SRC}/components`,
-      `./${SRC}/hooks`,
-      `./${SRC}/lib`,
-      `./${SRC}/types`,
-      `./${SRC}/utils`,
-    ],
-    from: [`./${SRC}/features`, `./${SRC}/routes`],
-    message:
-      'Shared code must not import from features or routes. If it needs to, it is not shared — move it into the feature that owns it.',
-  },
-];
-
-export const importBoundaries = {
-  name: 'baseline/import-boundaries',
-  files: ['src/**/*.{ts,tsx,js,jsx}'],
-  plugins: { 'import-x': importX },
-  rules: {
-    'import-x/no-restricted-paths': [
-      'error',
-      { zones: [...crossFeatureZones, ...layerZones] },
-    ],
-    // Barrel files defeat tree shaking and cause circular imports.
-    'import-x/no-cycle': ['error', { maxDepth: Infinity }],
-  },
-};
-
-export const fileNaming = {
-  name: 'baseline/file-naming',
-  files: ['src/**/*'],
-  plugins: { 'check-file': checkFile },
-  rules: {
-    'check-file/filename-naming-convention': [
-      'error',
-      { '**/*.{ts,tsx}': 'KEBAB_CASE' },
-      // `useAccounts.ts` stays `use-accounts.ts`, but `AccountsList.test.tsx` is judged on
-      // `AccountsList`, not on `test` — that is what ignoreMiddleExtensions buys.
-      { ignoreMiddleExtensions: true },
-    ],
-    'check-file/folder-naming-convention': [
-      'error',
-      { 'src/**/!(__tests__)': 'KEBAB_CASE' },
-    ],
-  },
-};
-
-// `src/generated/` is PAC CLI output, overwritten wholesale on regeneration. Linting it produces
-// noise nobody can act on, and a lint error there invites exactly the hand-edit the baseline forbids.
-export const generatedIgnores = {
-  name: 'baseline/ignore-generated',
-  ignores: ['src/generated/**', 'src/components/ui/**'],
-};
+const root = buildConfig(REPO_ROOT, { importX, checkFile });
+export const importBoundaries = root.importBoundaries;
+export const fileNaming = root.fileNaming;
+export const generatedIgnores = root.generatedIgnores;
 
 export default [generatedIgnores, importBoundaries, fileNaming];

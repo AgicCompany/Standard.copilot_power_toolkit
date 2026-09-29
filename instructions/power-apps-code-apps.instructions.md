@@ -1,6 +1,6 @@
 ---
 description: 'Power Apps Code App rules applied while writing app code — SDK, generated services, Dataverse access, and deployment. Full reference lives in docs/reference/power-apps-code-apps-reference.md.'
-applyTo: '**/*.{ts,tsx}, **/power.config.json, **/vite.config.*'
+applyTo: '**/*.{ts,tsx}, **/power.config.json, **/vite.config.*, **/package.json'
 ---
 
 # Power Apps Code Apps
@@ -107,7 +107,7 @@ authority on any flag.
 ## Adding a Dataverse table
 
 ```bash
-pa app add data-source --connector dataverse --table <logical-name>
+pa app add data-source --connector dataverse --table <logical-name> --org-url <org-url>
 ```
 
 - **`--connector dataverse` is the whole connector argument, and `dataverse` is the only accepted
@@ -118,8 +118,14 @@ pa app add data-source --connector dataverse --table <logical-name>
   it here is a hunt with no answer at the end.
 - **Do not pass an environment argument.** The active auth profile already determines the target —
   confirm it with `pa auth status` beforehand instead.
-- The whole command is the line above. Anything longer than that for a Dataverse table is a sign of
-  guessing; `pa app add data-source --help` settles it.
+- **Pass `--org-url https://<org>.crm<N>.dynamics.com`**, the Dataverse URL of the environment in
+  `power.config.json`. Without it `pa` may stop and ask for the organization URL, and in an agent's
+  terminal that prompt hangs the command. Get it from `pac org who`, **but only after checking that
+  its "Environment ID" equals the `environmentId` in `power.config.json`**: `pac` signs in separately
+  from `pa` and may be on another environment or tenant, and its URL would then be a valid URL for
+  the wrong organization. If they differ, stop and say so. Never take the URL from memory.
+- Beyond `--org-url`, the command is the line above. Anything longer for a Dataverse table is a sign
+  of guessing; `pa app add data-source --help` settles it.
 - **`--table` takes the singular logical name**: `account`, `contact` — not `accounts`, `contacts`.
   The plural is the OData *entity set* name; you will see both in `power.config.json`
   (`"logicalName": "contact"` next to `"entitySetName": "contacts"`). Users will say "the Accounts
@@ -151,28 +157,31 @@ all is the multi-row rule below; how to build one is the `custom-api-authoring` 
 - **Never call a generated `*Service` directly from a component body.** Wrap it in a hook that owns
   loading, error, pagination, and retry state — see `data-fetching.instructions.md` for the
   TanStack Query pattern this baseline uses.
-- **Select only the columns you need**, and **always bound the result set**. `getAll()` with no
-  bound fetches every row in the table — on `account` or `contact` in a real tenant that is
-  thousands of records pulled into the browser to render twenty.
+- **Select only the columns you need**, and **always bound each request**. `getAll()` with no options
+  uses the SDK's default page size of 500 — 500 rows pulled into the browser to render twenty, and
+  only the first 500 ever shown if the returned `skipToken` is ignored.
 
   The generated `IGetAllOptions` gives you the whole surface, so use it:
 
   ```ts
   await AccountsService.getAll({
     select: ['accountid', 'name', 'address1_city'],  // never the whole row
-    top: 50,                                          // hard bound — do not omit
-    orderBy: ['name asc'],                            // paging without order is not stable
-    maxPageSize: 50,                                  // page size per request
+    orderBy: ['name asc', 'accountid asc'],           // unique tie-breaker: stable pages
+    maxPageSize: 50,                                  // rows per request — do not omit
+    ...(skipToken ? { skipToken } : {}),              // the token the previous page returned
   });
   ```
 
-  - **`top`** bounds the total. Treat it as mandatory, not an optimisation.
-  - **`orderBy`** is required for paging to mean anything — an unordered page 2 may repeat rows
-    from page 1.
-  - **`skip`** is the normal choice for a paged list — `skip: page * PAGE_SIZE`, as the
-    `dataverse-typed-client` skill shows. **`skipToken`** is the continuation cursor Dataverse
-    returns; reach for it only when paging deep into a large table, where offset paging degrades.
-    Do not mix the two in one hook.
+  - **`maxPageSize`** is the page size. Treat it as mandatory, not an optimisation.
+  - **`skipToken`** is how you get the next page: pass back the one each response returns. It only
+    moves forward, so the UI is "Load more" or infinite scroll, not numbered pages.
+  - **Never `skip`.** It is in the generated type, but Dataverse rejects `$skip` with HTTP 400
+    ("Skip Clause is not supported in CRM", verified live). A `skip: page * PAGE_SIZE` hook passes
+    every mocked test and fails on the first real request.
+  - **`top`** caps the *total*, e.g. "the latest 5". With `top` below the page size you get that many
+    rows and no next page, so never use it as the page size.
+  - **`orderBy`** is required for paging to mean anything; add a unique column as the last key so
+    rows with equal values cannot swap between pages.
   - **`filter`** server-side. Fetching everything and filtering with `.filter()` in the component is
     the same bug wearing a different hat.
 
@@ -289,7 +298,8 @@ If there isn't one, say so — that is the finding.
 
 ## SDK and providers
 
-- `PowerProvider.tsx` wraps the app with Power Platform context. **v1.0 apps must not wait on SDK
+- If the project has a Power Platform provider component (older Microsoft templates generated
+  `PowerProvider.tsx`; the `pa` CLI does not), keep it, but **v1.0 apps must not wait on SDK
   initialization** — there is no initialize-then-render gate; blocking on one is a common cause of a
   permanently blank app.
 - Pin `@microsoft/power-apps` explicitly and treat a version bump as a change worth testing.
@@ -311,16 +321,29 @@ If there isn't one, say so — that is the finding.
 
 ## Local development and deployment
 
-- Local run needs both the Vite dev server and the Power Platform proxy:
-  `"dev": "concurrently \"vite\" \"pa app run\""`.
-- Deploy is `pnpm build` **followed by** `pa app push` — chained with `&&`, never `|`. `pa app push`
+- **Local run: `dev` is plain `vite`. Never put `pa app run` in it.** `pa app run` always runs the
+  `dev` script itself, so `"dev": "concurrently vite pa app run"` restarts itself recursively.
+- Check `vite.config` for the `powerApps()` plugin from `@microsoft/power-apps-vite`, which
+  Microsoft's template registers. **With it**, running the `dev` script is the whole setup: the
+  plugin serves `power.config.json` and prints the Play URL. **Without it**, run `pa app run`, which
+  starts a config server and then runs `dev`.
+- If the plugin is only added in a named Vite mode (`vite --mode powerapps`), `pa app run` cannot see
+  it: it loads the config in `development` mode and may print "failed to load config". Run
+  `vite --mode <mode> --port 3000` directly; if no Play URL appears, add
+  `pa app run --config-only` in a second terminal.
+- Deploy is `pnpm build` **followed by** `pa app push --solution-id <guid>` — chained with `&&`, never `|`. `pa app push`
   ships whatever is in `dist/`, so a push after a failed build silently republishes the previous
   bundle and the change appears not to have worked. Microsoft's docs use `npm`; translate.
 - Confirm the target environment before any push — `pa auth status`, and check the environment id
   against `power.config.json`. A push to the wrong environment is not trivially reversible.
-- In a pipeline, pass the solution explicitly: `pa app push --solution-id <guid>` (or the
-  `PA_CLI_SOLUTION_ID` variable). Solution **names are not accepted** — only GUIDs. Setting a
-  preferred solution on the dev environment makes the interactive first push land predictably.
+- **Always push with `--solution-id <guid>`**, interactively and in a pipeline (`PA_CLI_SOLUTION_ID`).
+  Without it the app goes silently into the environment's preferred solution, a per-maker setting
+  that can be someone else's working solution. Solution **names are not accepted**, only GUIDs;
+  `pa solution list` shows them.
+- `pa` and `pac` sign in separately and can point at different tenants: check `pa auth status` before
+  `pa` commands and `pac org who` before `pac` commands.
+- CI deploys with a service principal cannot be set up in a tenant's default environment (`pa app
+  share` rejects its `Default-` name); see the `code-app-deploy` skill.
 
 ## Platform limitations to design around
 

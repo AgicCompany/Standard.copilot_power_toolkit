@@ -17,7 +17,7 @@ this come from a server?* If yes, it belongs to Query.
 service. Every one gets a hook in `features/<name>/api/` that wraps it in a query:
 
 ```ts
-// features/accounts/api/useAccounts.ts
+// features/accounts/api/use-accounts.ts
 export const accountKeys = {
   all: ['accounts'] as const,
   list: (filter: AccountFilter) => [...accountKeys.all, 'list', filter] as const,
@@ -25,12 +25,19 @@ export const accountKeys = {
 };
 
 export function useAccounts(filter: AccountFilter) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: accountKeys.list(filter),
-    // top bounds the result; orderBy makes paging stable. Neither is optional.
-    queryFn: () => AccountsService.getAll({
-      select: ACCOUNT_COLUMNS, filter, orderBy: ['name asc'], top: PAGE_SIZE,
-    }),
+    // maxPageSize bounds each request; orderBy (with a unique tie-breaker) keeps pages stable.
+    queryFn: async ({ pageParam }) => {
+      const r = await AccountsService.getAll({
+        select: ACCOUNT_COLUMNS, filter, orderBy: ['name asc', 'accountid asc'],
+        maxPageSize: PAGE_SIZE, ...(pageParam ? { skipToken: pageParam } : {}),
+      });
+      if (!r.success) throw r.error ?? new Error('Loading accounts failed.'); // the SDK returns, never throws
+      return { rows: r.data, next: r.skipToken ?? null };
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.next,
     staleTime: 5 * 60_000,
   });
 }
@@ -40,8 +47,10 @@ export function useAccounts(filter: AccountFilter) {
 
 - **Every feature exports a key factory** like `accountKeys` above. Never inline a raw array literal
   at a call site — invalidation then depends on two places agreeing on a string.
-- **Keys include every input that changes the result** (filter, page, sort, id). A key missing an
-  input serves stale data for the wrong query.
+- **Keys include every input that changes the result** (filter, sort, id, and page for a
+  `useQuery` pager). A key missing an input serves stale data for the wrong query. The exception is
+  the `pageParam` of `useInfiniteQuery`: it keeps all pages in one cache entry, so the page never
+  goes in its key.
 - Order keys **general → specific** so `invalidateQueries({ queryKey: accountKeys.all })` sweeps the
   whole feature.
 
@@ -71,7 +80,9 @@ project, a model's first clarifying question offered *"a Dataverse generated ser
 and always applies; everything below is conditional on that folder existing.
 
 - **Always `select` an explicit column list.** Never fetch a whole wide table row to read two fields.
-- **Page server-side** (`top`/`skip`); never fetch everything and slice client-side.
+- **Page server-side with `maxPageSize` + the returned `skipToken`**; never fetch everything and slice
+  client-side. Dataverse rejects `skip` (HTTP 400), and `top` only caps the total. See the
+  `dataverse-typed-client` skill.
 - **Parallelise independent queries** — separate `useQuery` calls run concurrently; sequential
   `await`s in one `queryFn` do not.
 - Generated services have no FetchXML, no polymorphic lookups, and no alternate keys. Design the

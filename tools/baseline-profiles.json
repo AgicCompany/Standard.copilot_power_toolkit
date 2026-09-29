@@ -7,6 +7,22 @@
   "//6": "Patterns are baseline-relative, forward-slash, case-insensitive. '**' matches any depth,",
   "//7": "'*' matches within one path segment.",
   "//10": "'.github/**' in alwaysExcluded is THIS repo's own CI, not content for target projects. It runs tools/lint-baseline.ps1, and tools/ is itself excluded - so copying it would hand every project a workflow that fails on its first run.",
+  "//11": "README.md is this repository's front page, written for someone deciding whether to adopt the baseline. Copied into a project it became .github/README.md, which GitHub shows INSTEAD of the project's own README, and /setup reads it as the project's description. Hence alwaysExcluded.",
+  "//12": "retired: files the baseline used to write into projects and no longer does. alwaysExcluded stops them being copied, but it also stops -Prune counting them as baseline-owned, so old copies would stay forever. -Prune removes a retired file only when its content (line endings ignored) matches one of the listed SHA-256 hashes, i.e. it is byte-for-byte a version the baseline shipped. The receipt is NOT proof: an install without -Force records a path it skipped, so a project's own file would be listed. A project's own or edited file never matches and is kept.",
+  "retired": [
+    {
+      "path": "README.md",
+      "sha256": [
+        "acf74bc200355aece94b0ce4ea5395b4f450b5be13bdfbae1c1d4d19f817d419",
+        "c3763c1a06a5d87acac8000e319c0c81493d6845e9bf0cd4064e8517b4c77110",
+        "1b3ad9a0f8bee8639230da389b89cf3060ccaf6f07a20d9efaced9bd9f57bdf1",
+        "dad46e4928dadb01af9a44afe7f8f84a6e9e9228fa544faf03bf9a6f120c53c7",
+        "13b524b4e23150f7d9957ee35e23fe2fa531fc269d41e25a27b4421dd7f873a2",
+        "8cebc0892ba90bc519a0527a340f3081a16cd7c1e6f8d50a4af8968dcc14f81b",
+        "cbc55a87465d316d5b34f02a5d0adef3a4b824ad781e426b0a9094110e0b6749"
+      ]
+    }
+  ],
   "alwaysExcluded": [
     "tools/**",
     ".github/**",
@@ -17,6 +33,7 @@
     "USAGE_APPLY_ANY_PROJECT.md",
     "AGENTS.md",
     "INSTALLER.md",
+    "README.md",
     "logs/**",
     ".claude/**",
     ".git/**",
@@ -53,7 +70,6 @@
     "vite-env-guard.allow.template",
     "GOVERNANCE_MATRIX.md",
     "SAFETY_GUARDRAILS.md",
-    "README.md",
     "QUICK_REFERENCE.md",
     "ISSUE_TEMPLATE/**",
     ".vscode/**",

@@ -74,16 +74,6 @@ function Write-GuardLog {
 
 if ($env:SKIP_DIALOG_GUARD -eq 'true') { exit 0 }
 
-# Only a Code App needs this. There confirm() runs inside an iframe sandboxed without allow-modals
-# and silently returns false - a functional failure, which is what earned a blocking hook. In a
-# plain React app confirm() works; preferring the UI library's dialog there is a convention the
-# instruction layer carries. Code Apps are recognised as dataverse-schema-drift does it.
-$configPath = if ($env:POWER_CONFIG) { $env:POWER_CONFIG } else { 'power.config.json' }
-if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
-  Write-GuardLog -EventName 'not_a_code_app' -FilePath '' -Calls @() -Mode 'n/a'
-  exit 0
-}
-
 $raw = [Console]::In.ReadToEnd()
 if ([string]::IsNullOrWhiteSpace($raw)) { exit 0 }
 try { $payload = $raw | ConvertFrom-Json } catch { exit 0 }
@@ -128,6 +118,12 @@ if (-not $filePath -and $command) {
 
 if (-not $filePath) { exit 0 }
 
+# Canonical local path before anything inspects it. The parser accepts `uri`, so a value can be
+# file:///C:/repo/src/App.tsx; [Uri]::LocalPath strips the scheme and percent-decoding.
+if ($filePath -match '^file:') {
+  try { $filePath = ([Uri]$filePath).LocalPath } catch { }
+}
+
 # App source only. Tests legitimately stub these, and the baseline's own docs quote them while
 # explaining the rule - blocking those would make the guard fire on the file that documents it.
 $ext = [System.IO.Path]::GetExtension($filePath).ToLower()
@@ -137,6 +133,46 @@ if ($ext -notin @('.ts', '.tsx', '.js', '.jsx')) { exit 0 }
 $norm = $filePath -replace '\\', '/'
 if ($norm -match '(^|/)(node_modules|dist|build|\.github)/') { exit 0 }
 if ($norm -match '\.(test|spec)\.[jt]sx?$') { exit 0 }
+
+# Only a Code App needs this. There confirm() runs inside an iframe sandboxed without allow-modals
+# and silently returns false - a functional failure, which is what earned a blocking hook. In a
+# plain React app confirm() works; preferring the UI library's dialog there is a convention the
+# instruction layer carries.
+# A file belongs to a Code App when a power.config.json sits in its folder or any folder above it, up
+# to the repository root. That covers the root layout, a nested app (a multi-host template keeps it
+# in src/frontend/, where a root-only check stayed silent for a whole live test) and a repository
+# holding several apps. POWER_CONFIG overrides the search.
+$inCodeApp = $false
+if ($env:POWER_CONFIG) {
+  $inCodeApp = Test-Path -LiteralPath $env:POWER_CONFIG -PathType Leaf
+}
+else {
+  # ProviderPath, not [Environment]::CurrentDirectory: under Windows PowerShell the process directory
+  # can differ from the PowerShell location, and GetFullPath would resolve against the wrong one.
+  $repoRoot = [System.IO.Path]::GetFullPath((Get-Location).ProviderPath).TrimEnd('\', '/')
+  # GetFullPath resolves . and .. as well, so src/frontend/../other/App.tsx is judged as src/other.
+  $fullPath = $norm
+  if (-not [System.IO.Path]::IsPathRooted($fullPath)) { $fullPath = [System.IO.Path]::Combine($repoRoot, $fullPath) }
+  $fullPath = [System.IO.Path]::GetFullPath($fullPath)
+  # Only files inside the repository: walking above it could find an unrelated power.config.json.
+  $rootPrefix = $repoRoot + [System.IO.Path]::DirectorySeparatorChar
+  if (-not $fullPath.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    Write-GuardLog -EventName 'not_a_code_app' -FilePath $filePath -Calls @() -Mode 'n/a'
+    exit 0
+  }
+  $searchDir = [System.IO.Path]::GetDirectoryName($fullPath).TrimEnd('\', '/')
+  while ($searchDir) {
+    if (Test-Path -LiteralPath ([System.IO.Path]::Combine($searchDir, 'power.config.json')) -PathType Leaf) { $inCodeApp = $true; break }
+    if ($searchDir -eq $repoRoot) { break }
+    $parentDir = [System.IO.Path]::GetDirectoryName($searchDir)
+    if (-not $parentDir -or $parentDir -eq $searchDir) { break }
+    $searchDir = $parentDir.TrimEnd('\', '/')
+  }
+}
+if (-not $inCodeApp) {
+  Write-GuardLog -EventName 'not_a_code_app' -FilePath $filePath -Calls @() -Mode 'n/a'
+  exit 0
+}
 
 $content = $null
 if ($isTerminalWrite) {

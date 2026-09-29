@@ -130,7 +130,7 @@ never having considered them.
 
 ## Guidance Style
 
-- Reference file path and line range: `src/pages/Projects.tsx:L500-L550`
+- Reference file path and line range: `src/pages/projects.tsx:L500-L550`
 - Provide **before/after code examples** for suggested improvements
 - Use **numbered sections** with clear headings
 - Explain **"why"** not just **"what"** in feedback

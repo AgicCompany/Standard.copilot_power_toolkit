@@ -46,7 +46,7 @@ La task list generata _deve_ seguire questa struttura:
 
 ### Note
 
-- I test unitari dovrebbero tipicamente essere posizionati accanto ai file di codice che stanno testando (es., `MyComponent.tsx` e `MyComponent.test.tsx` nella stessa directory).
+- I test unitari dovrebbero tipicamente essere posizionati accanto ai file di codice che stanno testando (es., `my-component.tsx` e `my-component.test.tsx` nella stessa directory).
 - Leggere `package.json` prima di scrivere qualsiasi comando di test, controllando sia gli script sia le dipendenze:
   - esiste uno script `test` → usarlo (`pnpm test`);
   - nessuno script, ma `vitest` è tra le dipendenze → `pnpm vitest run [percorso/opzionale/del/file/test]`;

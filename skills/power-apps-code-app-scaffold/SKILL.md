@@ -120,11 +120,17 @@ Do not add an environment argument either. The active auth profile decides the t
 `pa auth status` beforehand. **`pa app add data-source --help` is the authority on flags** — guessing
 aliases is exactly how the two wrong values above got produced.
 
+Do pass `--org-url`: without it `pa` may stop and ask for the organization URL, and an interactive
+prompt hangs an agent's terminal. Take it from `pac org who` (its "Org URL") **only after confirming
+its "Environment ID" equals the `environmentId` in `power.config.json`**: `pac` signs in separately
+from `pa` and can be on another environment or tenant. If they differ, stop and say so. Never take
+the URL from memory.
+
 ```bash
-pa app add data-source --connector dataverse --table <table-logical-name>
+pa app add data-source --connector dataverse --table <table-logical-name> --org-url <org-url>
 ```
 
-Example: `pa app add data-source --connector dataverse --table account`
+Example: `pa app add data-source --connector dataverse --table account --org-url <org-url>`
 
 **When the user names the table in the plural — "add the accounts table" — use the singular and say
 so in one line.** The plural is the entity set name, which appears in API paths and in
@@ -140,8 +146,10 @@ This generates, per table:
 **Never present `.getAll()` without its bound.** Quoting this surface as a plain menu is how an
 unbounded `getAll()` ends up in the first component someone writes — observed live: this list was
 echoed verbatim to a user as "you can build against `.getAll()`", with no mention of paging, in the
-turn immediately before a list screen was requested. Always write it as `getAll({ select, top })`
-and point at `instructions/power-apps-code-apps.instructions.md` for the bounding rules.
+turn immediately before a list screen was requested. Always write it as
+`getAll({ select, orderBy, maxPageSize })`, paged with the `skipToken` each response returns, and
+point at the `dataverse-typed-client` skill for the hook. Never `top` as a page size (it caps the
+total and returns no next page) and never `skip` (Dataverse rejects it with HTTP 400).
 
 Repeat once per table you need at this point — don't front-load every table in the environment,
 add them as the app actually needs them.
@@ -168,7 +176,7 @@ the fallback if refresh does not pick the change up, but it loses the data sourc
 
 ```bash
 pa app remove data-source --connector dataverse --name account   # the table LOGICAL NAME, singular
-pa app add data-source --connector dataverse --table account
+pa app add data-source --connector dataverse --table account --org-url <org-url>
 ```
 
 **`--name` takes the logical name** — `account`, the same value `--table` takes. Not `Accounts`, not
@@ -192,8 +200,14 @@ Microsoft's "Connect your code app to data" doc; don't assume the Dataverse shor
 
 ```bash
 pnpm dev                        # local check
-pnpm build && pa app push     # publish to Power Apps
+pnpm build && pa app push --solution-id <guid>     # publish into the project's solution
 ```
+
+`<guid>` is the id of the solution this app belongs in: run `pa solution list` and ask the user which
+one, unless the project already records it (`project-context.md`, project memory, a pipeline
+variable). If the right solution does not exist yet, stop: it has to be created, with the project's
+publisher, before the first push. Without `--solution-id` the app lands in the environment's preferred
+solution, which may be someone else's.
 
 `&&`, never `|`. With a pipe, `pa app push` runs even when the build fails — and since it ships
 whatever is already in `dist/`, you silently publish the *previous* bundle and the fix you just made

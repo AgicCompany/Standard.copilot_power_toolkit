@@ -46,7 +46,7 @@ The generated task list _must_ follow this structure:
 
 ### Notes
 
-- Unit tests should typically be placed alongside the code files they are testing (e.g., `MyComponent.tsx` and `MyComponent.test.tsx` in the same directory).
+- Unit tests should typically be placed alongside the code files they are testing (e.g., `my-component.tsx` and `my-component.test.tsx` in the same directory).
 - Read `package.json` before writing any test command, and check both its scripts and its dependencies:
   - a `test` script exists → use it (`pnpm test`);
   - no script, but `vitest` is a dependency → `pnpm vitest run [optional/path/to/test/file]`;

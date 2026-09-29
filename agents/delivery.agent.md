@@ -80,7 +80,7 @@ has to untangle it.
 - **Never commit directly to `main` or `develop`.** If asked to, say why, offer the branch, and do
   what the user decides after they have heard the conflict.
 - You have the TDD cycle in context — use it. A reset button added test-first is
-  `feat(counter): add reset button`, not `update Counter.tsx`.
+  `feat(counter): add reset button`, not `update counter.tsx`.
 - **Review the diff before writing the message.** `git diff --staged` — a message describing what you
   assumed you changed rather than what is actually staged is worse than no message.
 

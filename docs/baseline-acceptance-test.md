@@ -271,13 +271,13 @@ If it fails, `prompts/setup.prompt.md` has drifted from
 
 **Prompt:**
 ```
-Create a Counter component in src/components/Counter.tsx with a button that increments a count.
+Create a Counter component in src/components/counter.tsx with a button that increments a count.
 ```
 
 Deliberately says nothing about conventions.
 
-- **PASS:** function component, named export, typed props, `PascalCase.tsx`, no `React.FC`,
-  `className` merged via `cn()`, and a colocated `Counter.test.tsx` using `getByRole` + `userEvent`.
+- **PASS:** function component, named export, typed props, kebab-case file (`counter.tsx`), no `React.FC`,
+  `className` merged via `cn()`, and a colocated `counter.test.tsx` using `getByRole` + `userEvent`.
   Tailwind isn't installed yet, so **either** it sets Tailwind up **or** it says plainly that styling
   won't render — silence is a fail.
 - **PASS (partial, still good):** it skips something from the Definition of done but **names what it
@@ -550,11 +550,11 @@ Both results together are the real evidence. Either alone is not.
 
 **Prompt:**
 ```
-Create src/components/Messy.tsx with deliberately bad formatting: double quotes, missing semicolons,
+Create src/components/messy.tsx with deliberately bad formatting: double quotes, missing semicolons,
 and inconsistent indentation.
 ```
 
-Then check **on disk**: `cat src/components/Messy.tsx`
+Then check **on disk**: `cat src/components/messy.tsx`
 
 - **PASS:** reformatted despite the request.
 - **FAIL:** exactly as written.
@@ -753,9 +753,9 @@ Show a list of accounts with their name and city.
 | | PASS | FAIL |
 |---|---|---|
 | Call site | generated service wrapped in a hook in `features/*/api/` | service called from the component body |
-| Query | `useQuery` + key factory | `useEffect` + `useState` |
+| Query | `useQuery` (or `useInfiniteQuery` for a paged list) + key factory | `useEffect` + `useState` |
 | Columns | explicit `select` list | whole row fetched |
-| Paging | server-side (`top`/`skip`) | fetch-all then `.slice()` |
+| Paging | server-side (`maxPageSize` + returned `skipToken`) | fetch-all then `.slice()`, or `skip` (Dataverse rejects it with HTTP 400) |
 
 ### D4. Refuses to hand-edit generated code
 

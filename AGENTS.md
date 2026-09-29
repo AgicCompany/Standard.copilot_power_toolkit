@@ -38,8 +38,8 @@ their `.template.md` counterparts and never overwritten again, including under `
 in the target, so a `-Force` re-sync silently replaced a project's tailored instructions with the
 generic template.
 
-This file itself is **excluded** from that copy (along with `tools/`, `docs/examples/`, and
-`USAGE_APPLY_ANY_PROJECT.md`) — it documents the baseline repo for whoever maintains it, not the
+This file itself is **excluded** from that copy (along with `tools/`, `docs/examples/`,
+`README.md`, `INSTALLER.md` and `USAGE_APPLY_ANY_PROJECT.md`) — it documents the baseline repo for whoever maintains it, not the
 target project. A target project's own stack assumptions (e.g. "React + TypeScript + Vite") belong
 in `copilot-instructions.template.md`, which *is* copied and becomes the target's always-loaded
 `.github/copilot-instructions.md`.

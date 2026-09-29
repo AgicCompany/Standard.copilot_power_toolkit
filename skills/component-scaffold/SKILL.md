@@ -23,7 +23,7 @@ it to `src/components/` in the same change.
 ## Component template
 
 ```tsx
-// src/features/accounts/components/AccountCard.tsx
+// src/features/accounts/components/account-card.tsx
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,7 +51,7 @@ export function AccountCard({ account, onSelect, className }: AccountCardProps) 
 ```
 
 Rules encoded above:
-- **Named export**, `PascalCase.tsx` matching the component name, one component per file
+- **Named export**, one component per file, in a kebab-case file: `AccountCard` → `account-card.tsx`
 - **No `React.FC`** — it adds implicit children and buys nothing
 - **`className` accepted and merged last via `cn()`** so callers can adjust spacing without new props
 - **Semantic tokens** (`bg-muted`, `text-muted-foreground`), never raw palette colours — that is what
@@ -61,10 +61,10 @@ Rules encoded above:
 ## Test template
 
 ```tsx
-// src/features/accounts/components/AccountCard.test.tsx
+// src/features/accounts/components/account-card.test.tsx
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AccountCard } from './AccountCard';
+import { AccountCard } from './account-card';
 
 const account = { accountid: '1', name: 'Contoso' } as Account;
 

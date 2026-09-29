@@ -34,7 +34,7 @@ catch-all `full` profile.
 | `instructions/performance-optimization.instructions.md` | `**/*.{tsx,jsx}` | power-apps-code-app, react-vite |
 | `instructions/playwright-typescript.instructions.md` | `**/tests/**/*.spec.ts, **/e2e/**/*.spec.ts, playwright.config.ts` | power-apps-code-app, react-vite |
 | `instructions/power-apps-canvas-yaml.instructions.md` | `**/*.pa.yaml, **/*.fx.yaml` | power-apps-code-app |
-| `instructions/power-apps-code-apps.instructions.md` | `**/*.{ts,tsx}, **/power.config.json, **/vite.config.*` | power-apps-code-app |
+| `instructions/power-apps-code-apps.instructions.md` | `**/*.{ts,tsx}, **/power.config.json, **/vite.config.*, **/package.json` | power-apps-code-app |
 | `instructions/power-platform-mcp-development.instructions.md` | `**/connectors/**/*.{json,csx}, **/apiDefinition*.json, **/apiProperties*.json, **/*.csx` | full only |
 | `instructions/prompt.instructions.md` | `**/*.prompt.md` | baseline-authoring |
 | `instructions/react-ts.instructions.md` | `**/*.{ts,tsx}` | power-apps-code-app, react-vite |

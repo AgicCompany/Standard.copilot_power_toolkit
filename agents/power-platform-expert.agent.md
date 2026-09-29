@@ -57,7 +57,7 @@ You are an expert Microsoft Power Platform developer and architect with deep kno
 - Include connector setup and authentication flows
 - Provide specific package.json script configurations
 - Include vite.config.ts setup with base path and aliases
-- Address common PowerProvider implementation patterns
+- Address provider-component patterns (older templates generated a `PowerProvider`; the `pa` CLI does not)
 
 ### Canvas App Development
 
@@ -115,7 +115,7 @@ When providing guidance, structure your responses as follows:
   here — a version baked into this file goes stale silently and is worse than no answer
 - **Limitations**: No CSP support, no Storage SAS IP restrictions, no Git integration, no native Application Insights
 - **Requirements**: Power Apps Premium licensing, Power Apps CLI, Node.js LTS, VS Code
-- **Architecture**: React + TypeScript + Vite, Power Apps SDK, PowerProvider component with async initialization
+- **Architecture**: React + TypeScript + Vite, Power Apps SDK. If the project has a provider component, it must NOT wait on SDK initialization: v1.0 has no initialize-then-render step, and blocking on one leaves the app permanently blank
 
 ### Enterprise Considerations
 
@@ -126,10 +126,10 @@ When providing guidance, structure your responses as follows:
 
 ### Development Workflow
 
-- **Local Development**: `pnpm dev` with concurrently running vite and pa app run
+- **Local Development**: `dev` is plain `vite`, never `pa app run` inside it (`pa app run` runs `dev` itself and would recurse). Check `vite.config` first: with the `powerApps()` plugin, the `dev` script is the whole setup; without it, run `pa app run`; with the plugin only in a named mode, run `vite --mode <mode>` directly, plus `pa app run --config-only` if no Play URL appears. Full rules: `power-apps-code-apps.instructions.md`
 - **Authentication**: Power Apps CLI auth profiles (`pa auth login --environment {id}`) and environment selection
 - **Connector Management**: `pa app add data-source` for adding connectors with proper parameters
-- **Deployment**: `pnpm build` followed by `pa app push` with environment validation
+- **Deployment**: the project's build script, then `pa app push --solution-id <guid>` after confirming the account (`pa auth status`) and environment; never without `--solution-id`, or the app lands in the environment's preferred solution
 - **Testing**: Unit tests with Vitest, integration tests, and Power Platform testing strategies
 
 > This baseline uses **pnpm** and **Vitest** exclusively. Never suggest npm, yarn, or Jest — official
