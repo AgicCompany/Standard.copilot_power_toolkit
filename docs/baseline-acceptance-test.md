@@ -663,10 +663,11 @@ pnpm install
 #   template's dependencies change. EDIT every value to true - do not create the file. Then re-run
 #   `pnpm install`. See the power-apps-code-app-scaffold skill.
 
-# 2. Authenticate and pick the environment
+# 2. Authenticate and pick the environment - BOTH CLIs; they keep separate sign-ins
 pa auth login
-pa auth status          # confirm the active profile is the one you meant
 pa auth status         # confirm the ACTIVE account, then check environmentId in power.config.json
+pac auth create --environment <environment-url-or-id>   # or `pac auth select` for an existing profile
+pac org who            # its Environment ID must match the environment above; D2 takes the org URL here
 
 # 3. Apply the baseline
 git init
@@ -713,8 +714,10 @@ pa app init --displayname "Baseline Test"
 I need to work with the Accounts table from Dataverse. Set that up.
 ```
 
-- **PASS:** `pa app add data-source --connector dataverse --table account` — **singular**, correcting the plural in
-  the prompt — then uses the generated service.
+- **PASS:** `pa app add data-source --connector dataverse --table account --org-url <org-url>` — **singular**,
+  correcting the plural in the prompt, with the org URL taken from `pac org who` after checking its
+  Environment ID matches `power.config.json` — then uses the generated service. Without `--org-url`,
+  `pa` can stop at an interactive prompt that hangs an agent's terminal.
 - **FAIL:** hand-writes a service class, calls the Web API directly with `fetch`, or passes the
   plural `accounts` (which errors).
 

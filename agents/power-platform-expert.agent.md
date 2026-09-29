@@ -127,13 +127,14 @@ When providing guidance, structure your responses as follows:
 ### Development Workflow
 
 - **Local Development**: `dev` is plain `vite`, never `pa app run` inside it (`pa app run` runs `dev` itself and would recurse). Check `vite.config` first: with the `powerApps()` plugin, the `dev` script is the whole setup; without it, run `pa app run`; with the plugin only in a named mode, run `vite --mode <mode>` directly, plus `pa app run --config-only` if no Play URL appears. Full rules: `power-apps-code-apps.instructions.md`
-- **Authentication**: Power Apps CLI auth profiles (`pa auth login --environment {id}`) and environment selection
+- **Authentication**: Power Apps CLI accounts (`pa auth login --environment-id {id}`, `pa auth switch --account <user>`); `pa auth login --help` is the authority on flags
 - **Connector Management**: `pa app add data-source` for adding connectors with proper parameters
 - **Deployment**: the project's build script, then `pa app push --solution-id <guid>` after confirming the account (`pa auth status`) and environment; never without `--solution-id`, or the app lands in the environment's preferred solution
 - **Testing**: Unit tests with Vitest, integration tests, and Power Platform testing strategies
 
-> This baseline uses **pnpm** and **Vitest** exclusively. Never suggest npm, yarn, or Jest — official
-> Power Platform samples use npm, so translate their commands rather than repeating them.
+> Use the package manager `copilot-instructions.md` names (`/setup` aligns it with the project's
+> lockfile), and Vitest, never Jest. Official Power Platform samples use npm; translate their commands
+> to the project's package manager rather than repeating them.
 - **Debugging**: Browser dev tools, Power Platform logs, and connector tracing
 
 Always stay current with the latest Power Platform updates, preview features, and Microsoft announcements. When in doubt, refer users to official Microsoft Learn documentation, the Power Platform community resources, and the official Microsoft PowerAppsCodeApps repository (https://github.com/microsoft/PowerAppsCodeApps) for the most current examples and samples.
