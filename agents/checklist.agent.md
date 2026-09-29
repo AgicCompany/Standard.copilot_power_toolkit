@@ -58,8 +58,8 @@ Help the user:
 
 ## When to Use This Agent
 
-- "Run the checklist against the Projects.tsx refactor I just completed"
-- "Validate the Projects.tsx changes against code quality standards"
+- "Run the checklist against the projects.tsx refactor I just completed"
+- "Validate the projects.tsx changes against code quality standards"
 - "Does the RequestEdit handler refactoring meet our structural and security requirements?"
 - "Check if the new utility function follows our project patterns"
 - "Is this component accessible? Does it meet WCAG 2.1 AA?"
@@ -126,7 +126,7 @@ not as a strength. Confirmed failure mode from real testing: this phase previous
 
 ## Guidance Style
 
-- Reference file path and line range: `src/pages/Projects.tsx:L100-L150`
+- Reference file path and line range: `src/pages/projects.tsx:L100-L150`
 - Organize findings by category (Structure, Types, Standards, Gates, Security, A11y, Performance)
 - Use checkboxes (✓ / ✗) for binary validations
 - Highlight blockers separately from suggestions

@@ -43,45 +43,80 @@ function Write-DriftLog {
 
 if ($env:SKIP_SCHEMA_DRIFT -eq 'true') { Write-DriftLog 'skipped' 'SKIP_SCHEMA_DRIFT=true'; exit 0 }
 
-$configPath = if ($env:POWER_CONFIG) { $env:POWER_CONFIG } else { 'power.config.json' }
-$generatedDir = if ($env:GENERATED_DIR) { $env:GENERATED_DIR } else { 'src/generated' }
-
-# Not a Power Apps Code App, or codegen has never run - nothing to compare.
-if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
-  Write-DriftLog 'not_a_code_app' "no $configPath"
-  exit 0
-}
-if (-not (Test-Path -LiteralPath $generatedDir -PathType Container)) {
-  $msg = "Dataverse: '$configPath' exists but '$generatedDir' does not. If this app uses Dataverse data sources, the typed services have not been generated yet - run 'pa app add data-source' before writing data access code."
-  @{
-    hookSpecificOutput = @{
-      hookEventName     = 'SessionStart'
-      additionalContext = $msg
+# Which Code Apps does this repository hold? Not only the root: a multi-host template keeps its app in
+# src/frontend/power.config.json, and a root-only check stayed silent there for a whole live test.
+# pa generates each app's services in src/generated NEXT TO its power.config.json, so every app is
+# checked against its own folder. POWER_CONFIG (with optional GENERATED_DIR) pins a single app.
+# Directory walk instead of Get-ChildItem -Recurse, which would enumerate every file in node_modules.
+function Find-PowerConfig {
+  $skip = @('node_modules', '.git', 'dist', 'build')
+  $found = New-Object System.Collections.Generic.List[string]
+  $queue = New-Object System.Collections.Generic.Queue[object]
+  $queue.Enqueue(@('.', 0))
+  while ($queue.Count -gt 0) {
+    $item = $queue.Dequeue()
+    $dir = $item[0]; $depth = $item[1]
+    $candidate = [System.IO.Path]::Combine($dir, 'power.config.json')
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+      $found.Add((($candidate -replace '^\.[\\/]', '') -replace '\\', '/'))
     }
-  } | ConvertTo-Json -Compress -Depth 4
-  Write-DriftLog 'emitted_no_generated_dir' $generatedDir
-  exit 0
+    if ($depth -ge 5) { continue }
+    foreach ($sub in @(Get-ChildItem -LiteralPath $dir -Directory -Force -ErrorAction SilentlyContinue)) {
+      if ($skip -notcontains $sub.Name) { $queue.Enqueue(@([System.IO.Path]::Combine($dir, $sub.Name), ($depth + 1))) }
+    }
+  }
+  return @($found | Sort-Object)
 }
 
-$generatedFiles = @(Get-ChildItem -LiteralPath $generatedDir -Recurse -File -ErrorAction SilentlyContinue)
-if ($generatedFiles.Count -eq 0) { Write-DriftLog 'no_generated_files' $generatedDir; exit 0 }
+$configs = if ($env:POWER_CONFIG) { @($env:POWER_CONFIG) } else { @(Find-PowerConfig) }
+if ($configs.Count -eq 0) { Write-DriftLog 'not_a_code_app' 'no power.config.json'; exit 0 }
 
-$configTime = (Get-Item -LiteralPath $configPath).LastWriteTimeUtc
-$newestGenerated = ($generatedFiles | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1)
-$generatedTime = $newestGenerated.LastWriteTimeUtc
+$messages = New-Object System.Collections.Generic.List[string]
+foreach ($configPath in $configs) {
+  # A pinned POWER_CONFIG may use Windows separators (src\frontend\power.config.json). Normalise, or
+  # the folder derivation below misses and looks for src/generated at the root.
+  $configPath = $configPath -replace '\\', '/'
+  if ($env:POWER_CONFIG -and $env:GENERATED_DIR) {
+    $generatedDir = $env:GENERATED_DIR
+  }
+  elseif ($configPath -match '^(.*)/[^/]+$') {
+    $generatedDir = "$($Matches[1])/src/generated"
+  }
+  else {
+    $generatedDir = 'src/generated'
+  }
 
-if ($configTime -le $generatedTime) {
-  Write-DriftLog 'no_drift' "config $($configTime.ToString('u')) <= generated $($generatedTime.ToString('u'))"
-  exit 0
-}
+  # Not a Power Apps Code App, or codegen has never run - nothing to compare.
+  if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+    Write-DriftLog 'not_a_code_app' "no $configPath"
+    continue
+  }
+  if (-not (Test-Path -LiteralPath $generatedDir -PathType Container)) {
+    $messages.Add("Dataverse: '$configPath' exists but '$generatedDir' does not. If this app uses Dataverse data sources, the typed services have not been generated yet - run 'pa app add data-source' before writing data access code.")
+    Write-DriftLog 'emitted_no_generated_dir' $generatedDir
+    continue
+  }
 
-$span = $configTime - $generatedTime
-$drift = if ($span.TotalHours -lt 1) { 'less than an hour' }
-         elseif ($span.TotalHours -lt 48) { "$([math]::Round($span.TotalHours)) hour(s)" }
-         else { "$([math]::Round($span.TotalDays)) day(s)" }
-$msg = @"
-ACT ON THIS BEFORE WRITING DATA ACCESS CODE. This is a gate, not background information.
+  $generatedFiles = @(Get-ChildItem -LiteralPath $generatedDir -Recurse -File -ErrorAction SilentlyContinue)
+  if ($generatedFiles.Count -eq 0) { Write-DriftLog 'no_generated_files' $generatedDir; continue }
 
+  $configTime = (Get-Item -LiteralPath $configPath).LastWriteTimeUtc
+  $newestGenerated = ($generatedFiles | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1)
+  $generatedTime = $newestGenerated.LastWriteTimeUtc
+
+  if ($configTime -le $generatedTime) {
+    Write-DriftLog 'no_drift' "$($configPath): config $($configTime.ToString('u')) <= generated $($generatedTime.ToString('u'))"
+    continue
+  }
+
+  $span = $configTime - $generatedTime
+  # Floor, not Round: the bash mirror uses integer division, so 1h31m is "1 hour(s)" in both.
+  $drift = if ($span.TotalHours -lt 1) { 'less than an hour' }
+           elseif ($span.TotalHours -lt 48) { "$([math]::Floor($span.TotalHours)) hour(s)" }
+           else { "$([math]::Floor($span.TotalDays)) day(s)" }
+  # Keep this message word-for-word in sync with check-schema-drift.sh. It had drifted: this mirror
+  # carried an extra opening paragraph the bash one never had.
+  $msg = @"
 Dataverse schema drift: '$configPath' was modified $drift AFTER the newest file in '$generatedDir', so the generated services may no longer match the configured data sources.
 
 STOP - ACT ON THIS BEFORE YOUR FIRST EDIT. This is a gate, not background information.
@@ -96,16 +131,21 @@ Offer to regenerate with 'pa app refresh data-source --name <name>'. Never hand-
 
 If the task does not touch Dataverse, or the user says '$configPath' was changed for unrelated reasons, proceed without raising it again.
 "@
+  $messages.Add($msg)
+  Write-DriftLog 'emitted_drift_warning' "$($configPath): $drift"
+}
+
+if ($messages.Count -eq 0) { exit 0 }
 
 # The payload MUST be nested under hookSpecificOutput, with hookEventName alongside it. A flat
 # { "additionalContext": "..." } is accepted, produces no error, and is silently discarded - which is
 # how this hook appeared to work for months while never reaching the model once.
 # Spec: https://code.visualstudio.com/docs/agent-customization/hooks
+# One JSON document on stdout, whatever the number of apps: stdout is parsed on sessionStart.
 @{
   hookSpecificOutput = @{
     hookEventName     = 'SessionStart'
-    additionalContext = $msg
+    additionalContext = ($messages -join "`n`n---`n`n")
   }
 } | ConvertTo-Json -Compress -Depth 4
-Write-DriftLog 'emitted_drift_warning' $drift
 exit 0

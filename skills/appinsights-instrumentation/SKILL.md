@@ -210,7 +210,7 @@ pnpm add @microsoft/applicationinsights-web
 ```
 
 ```ts
-// src/lib/appInsights.ts
+// src/lib/app-insights.ts
 import { ApplicationInsights } from '@microsoft/applicationinsights-web';
 
 const connectionString = import.meta.env.VITE_APPLICATIONINSIGHTS_CONNECTION_STRING;
@@ -252,7 +252,7 @@ Two SPA-specific points that do not arise server-side:
 
 **Code Apps specifically:** CSP is not supported for Code Apps, so there is nothing to allowlist — but
 telemetry is loaded inside the Power Apps iframe, so verify events actually arrive in the portal-hosted
-app, not only in `pa app run`.
+app, not only in a local run.
 
 ## Best Practices
 

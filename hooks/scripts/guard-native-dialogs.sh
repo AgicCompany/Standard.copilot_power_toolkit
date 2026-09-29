@@ -32,12 +32,6 @@ guard_log() {
 
 [[ "${SKIP_DIALOG_GUARD:-}" == "true" ]] && exit 0
 
-# Only a Code App needs this. There confirm() runs inside an iframe sandboxed without allow-modals
-# and silently returns false - a functional failure, which is what earned a blocking hook. In a
-# plain React app confirm() works; preferring the UI library's dialog there is a convention the
-# instruction layer carries. Code Apps are recognised as dataverse-schema-drift does it.
-[[ -f "${POWER_CONFIG:-power.config.json}" ]] || { guard_log not_a_code_app "" "" "n/a"; exit 0; }
-
 command -v jq >/dev/null 2>&1 || { guard_log no_jq "" "" "n/a"; exit 0; }
 
 raw="$(cat)"
@@ -71,6 +65,20 @@ fi
 
 [[ -z "$file_path" ]] && exit 0
 
+# Canonical local path before anything inspects it. The parser accepts `uri`, so a value can be
+# file:///C:/repo/src/App.tsx: strip the scheme and percent-decoding, and drop the slash before a
+# drive letter. Then backslashes become slashes. The backslash lives in a variable on purpose:
+# inside double quotes, "${x//\\//}" becomes the pattern \/ and deletes every forward slash.
+bs='\'
+case "$file_path" in
+  file://*)
+    file_path="${file_path#file://}"
+    file_path="$(printf '%b' "$(printf '%s' "$file_path" | sed 's/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')")"
+    case "$file_path" in /[A-Za-z]:/*) file_path="${file_path#/}" ;; esac
+    ;;
+esac
+file_path="${file_path//"$bs"//}"
+
 case "$file_path" in
   *.ts|*.tsx|*.js|*.jsx) ;;
   *) exit 0 ;;
@@ -82,6 +90,51 @@ case "$file_path" in
   */node_modules/*|*/dist/*|*/build/*|*/.github/*) exit 0 ;;
   *.test.ts|*.test.tsx|*.test.js|*.test.jsx|*.spec.ts|*.spec.tsx|*.spec.js|*.spec.jsx) exit 0 ;;
 esac
+
+# Only a Code App needs this. There confirm() runs inside an iframe sandboxed without allow-modals
+# and silently returns false - a functional failure, which is what earned a blocking hook. In a
+# plain React app confirm() works; preferring the UI library's dialog there is a convention the
+# instruction layer carries.
+# A file belongs to a Code App when a power.config.json sits in its folder or any folder above it, up
+# to the repository root. That covers the root layout, a nested app (a multi-host template keeps it
+# in src/frontend/, where a root-only check stayed silent for a whole live test) and a repository
+# holding several apps. POWER_CONFIG overrides the search.
+if [[ -n "${POWER_CONFIG:-}" ]]; then
+  [[ -f "$POWER_CONFIG" ]] || { guard_log not_a_code_app "$file_path" "" "n/a"; exit 0; }
+else
+  repo_root="$(pwd)"
+  full_path="$file_path"
+  case "$full_path" in /*|[A-Za-z]:/*) ;; *) full_path="$repo_root/$full_path" ;; esac
+  # Resolve . and .. before walking. Walking the text instead turned src/frontend/../other/App.tsx
+  # into a visit to src/frontend and blocked a file that is not in that app.
+  lead=""; [[ "$full_path" == /* ]] && lead="/"
+  IFS='/' read -ra segs <<< "$full_path"
+  kept=()
+  for seg in "${segs[@]}"; do
+    case "$seg" in
+      ''|.) ;;
+      ..) [[ ${#kept[@]} -gt 0 ]] && unset 'kept[${#kept[@]}-1]' ;;
+      *) kept+=("$seg") ;;
+    esac
+  done
+  full_path="$lead$(IFS='/'; printf '%s' "${kept[*]}")"
+  # Only files inside the repository: walking above it could find an unrelated power.config.json.
+  case "$full_path" in
+    "$repo_root"/*) ;;
+    *) guard_log not_a_code_app "$file_path" "" "n/a"; exit 0 ;;
+  esac
+  search_dir="${full_path%/*}"
+  in_code_app=0
+  while :; do
+    [[ -f "$search_dir/power.config.json" ]] && { in_code_app=1; break; }
+    [[ "$search_dir" == "$repo_root" || "$search_dir" == "/" ]] && break
+    parent_dir="${search_dir%/*}"
+    [[ -z "$parent_dir" ]] && parent_dir="/"
+    [[ "$parent_dir" == "$search_dir" ]] && break
+    search_dir="$parent_dir"
+  done
+  [[ "$in_code_app" -eq 1 ]] || { guard_log not_a_code_app "$file_path" "" "n/a"; exit 0; }
+fi
 
 if [[ "$is_terminal_write" -eq 1 ]]; then
   # The whole command is the payload - the source being written is embedded in it as a quoted string.

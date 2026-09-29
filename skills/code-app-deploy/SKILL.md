@@ -34,17 +34,24 @@ To change account:
 pa auth switch --account <user@example.com>
 ```
 
+**`pa` and `pac` keep separate sign-ins.** A project with plug-ins or a solution uses both, and they
+can point at different tenants at the same time: in a live run, PAC was on the dev tenant while pa
+was still signed in to a client tenant from earlier work. Check each before anything that writes:
+`pa auth status` before `pa app …`, and `pac auth list` / `pac org who` before `pac solution …` or
+`pac plugin …`.
+
 ## The deploy sequence
 
 Order matters. `pa app push` publishes whatever is in the build output directory — it does not
-build for you.
+build for you. Shown with pnpm; use the package manager `copilot-instructions.md` names (which
+`/setup` aligns with the project's lockfile).
 
 ```bash
-pnpm install          # 1. dependencies match the lockfile
-pnpm lint             # 2.
-pnpm build            # 3. produces dist/ — on the default scaffold this is `tsc -b && vite build`,
-                      #    so it typechecks too
-pa app push         # 4. publishes dist/
+pnpm install                          # 1. dependencies match the lockfile
+pnpm lint                             # 2.
+pnpm build                            # 3. produces dist/ — on the default scaffold this is
+                                      #    `tsc -b && vite build`, so it typechecks too
+pa app push --solution-id <guid>      # 4. publishes dist/ into that solution
 ```
 
 **Run only the scripts this project actually defines.** Read `package.json` first. The default Code
@@ -71,11 +78,12 @@ earlier in the same session can move it between your check and your push. The `e
 Once a project has plug-ins, Custom APIs or flows alongside the app, the **solution** becomes the
 release vehicle and the push is only one part of it.
 
-- **Push into a named solution:** `pa app push --solution-id <guid>`, or the `PA_CLI_SOLUTION_ID`
-  environment variable in a pipeline. **Solution names are not accepted — only GUIDs.**
-  `pa solution list` resolves a name to its id.
-- **Set a preferred solution on the dev environment** so an interactive first push lands where you
-  expect without the flag.
+- **Always push with `--solution-id <guid>`**, interactively and in a pipeline (where
+  `PA_CLI_SOLUTION_ID` sets it). Without it the app goes, silently, into the environment's
+  **preferred solution**: a per-maker setting that can point at someone else's working solution. In
+  a live run the push printed "Adding the app to your preferred solution" and landed in one nobody
+  had chosen. **Solution names are not accepted — only GUIDs.** `pa solution list` shows each id.
+  Do not rely on setting a preferred solution instead: it is state someone else can change.
 - **Use connection references, never direct connections**, or the solution will not import into
   another environment. `pa connection list-references --solution-id <guid>` shows what a solution
   carries.
@@ -97,9 +105,20 @@ limited. Promotion is therefore explicit, not automated:
    present there, with the same logical names. They are not carried by the push.
 3. Rebuild with the target's environment variables (`.env.<env>` / build-time `VITE_` values are
    baked into the bundle — a bundle built for dev contains dev URLs).
-4. `pa app push`.
+4. `pa app push --solution-id <guid>` with the target environment's solution id.
 5. Smoke-test data access specifically. Most environment-promotion failures are connection/permission
    failures, not code failures.
+
+## Deploying from CI with a service principal
+
+A pipeline pushes as a service principal, which needs edit access to the app (`pa app share
+--principal <enterprise-app-object-id> --access edit`, run once by a maker). **In a tenant's default
+environment (`Default-<tenant id>`) this cannot be set up.** Verified live: `pa app share` refuses any
+environment name that is not a GUID, before sending anything; the maker portal's Share panel does
+not offer service principals; and a service principal made an application user with System
+Administrator is still refused by the platform (HTTP 403 on the environment access check). Use a
+dedicated, non-default environment for any app deployed from CI, and say so before building the
+pipeline rather than after it fails at the push.
 
 ## Common failures
 
@@ -108,23 +127,28 @@ limited. Promotion is therefore explicit, not automated:
 | Push succeeds, app shows old content | `pnpm build` not run, or pushed from a stale `dist/` | Rebuild, confirm `dist/` mtime, push again |
 | Blank white app after deploy | App waiting on SDK initialization | v1.0 apps must not gate render on SDK init — see `docs/reference/power-apps-code-apps-reference.md` |
 | Auth/401 errors only after deploy | Connection not shared, or missing in target environment | Verify connections in the target; re-add the data source there |
-| Data works locally, fails deployed | Local run proxies through `pa app run`; deployed uses real connections | Test with a real connection before promoting |
+| Data works locally, fails deployed | Local play runs as you, with your connections; deployed users need theirs | Test with a real connection before promoting |
 | Push targets the wrong environment | Stale `pa auth` account, or an `environmentId` from another environment | Check `pa auth status` AND `power.config.json` first |
 | CSP / iframe errors | CSP is **not supported** for Code Apps | Do not attempt CSP headers; design around it |
 
 ## Local development
 
-Local dev needs the Vite server *and* the Power Platform proxy running together:
+Microsoft's template sets `"dev": "vite"` and registers the `powerApps()` Vite plugin, which serves
+`power.config.json` and prints the Play URL. With the plugin, running the `dev` script is the whole
+local setup. Without it, run `pa app run`: it starts a config server and runs `dev` itself.
 
-```json
-{ "scripts": { "dev": "concurrently \"vite\" \"pa app run\"" } }
-```
+**Never put `pa app run` in the `dev` script.** `pa app run` always runs `dev` (it refuses to start
+without one), so `"dev": "concurrently vite pa app run"` restarts itself recursively.
 
-Running `vite` alone gives an app whose data calls fail with no useful error.
+A config that adds the plugin only in a named mode (`--mode powerapps`) is invisible to `pa app run`,
+which loads the config in `development` mode: run `vite --mode <mode> --port 3000` directly, plus
+`pa app run --config-only` in a second terminal if no Play URL appears.
 
 ## Before you push — checklist
 
 - [ ] Active account and `power.config.json` environmentId shown to the user and confirmed — **re-checked immediately before pushing**
+- [ ] If the project also uses `pac`, its active profile checked too (`pac org who`): the two CLIs sign in separately
+- [ ] Push carries `--solution-id` for the intended solution, from `pa solution list`
 - [ ] Build ran *after* the last source change
 - [ ] Every quality script the project defines passes (not "will fix later"); any you skipped are
       named, with the reason

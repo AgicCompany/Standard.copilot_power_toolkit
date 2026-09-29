@@ -10,7 +10,7 @@ Copies a **profile-selected subset** of this repository into a target project's 
 The profile decides what is copied; nothing in this repository is ever modified.
 
 - Logic: `tools/apply-baseline.ps1` (420 lines).
-- Data: `tools/baseline-profiles.json` — `common`, `alwaysExcluded`, `uiVariants`, and the
+- Data: `tools/baseline-profiles.json` — `common`, `alwaysExcluded`, `retired`, `uiVariants`, and the
   `profiles` with their `extends` chains. **The installer and `tools/lint-baseline.ps1` both read
   this file**, so it is the single source of truth for what ships where.
 
@@ -92,6 +92,12 @@ Each of these exists because its absence was a real, observed bug.
    non-template source path; delete a target file only if it is in that set **and** not in the
    current profile. Project-authored files must be untouchable. Case-insensitive comparison. After
    pruning, remove empty directories, and remove legacy `.github/hooks/<name>/hooks.json` folders.
+   **Retired files** (`retired` in `baseline-profiles.json`, each a `path` plus `sha256` list) are
+   files the baseline used to ship: add one to the prune set only when the target file's SHA-256,
+   computed with every CR byte removed, is in its list. *Bugs it prevents:* excluding a file stops it
+   being copied but also stops prune owning it, so old copies stay forever; and the receipt is not
+   proof of ownership, because an install without `--force` records paths it skipped, so trusting
+   it would delete a project's own file.
 
 8. **Relative paths must survive Windows 8.3 short names** (`C:\Users\LONGNA~1\…`). A substring-based
    relative path silently produces garbage when one side is short-named. Normalise both sides first
@@ -115,9 +121,11 @@ npm publishes everything not ignored unless `package.json` has a `files` whiteli
 
 **Must ship:** `agents/`, `instructions/`, `prompts/`, `skills/`, `hooks/`, `docs/` (not
 `docs/examples/`), `ISSUE_TEMPLATE/`, `eslint/`, `.vscode/`, the root `*.template.md` and
-`vite-env-guard.allow.template`, the root docs that profiles copy (`README.md`, `QUICK_REFERENCE.md`,
+`vite-env-guard.allow.template`, the root docs that profiles copy (`QUICK_REFERENCE.md`,
 `SAFETY_GUARDRAILS.md`, `GOVERNANCE_MATRIX.md`, `PROGRESSIVE_DISCLOSURE.md`,
 `ISSUE_TEMPLATE_PROGRESSIVE_DISCLOSURE.md`), **`tools/baseline-profiles.json`**, and the CLI itself.
+`README.md` is in the package as its own documentation (npm includes it regardless), but it is
+**never copied into a project**: it is in `alwaysExcluded`.
 
 **Must not ship:** `AGENTS.md`, `INSTALLER.md`, `USAGE_APPLY_ANY_PROJECT.md`, the other `tools/`
 scripts, `.github/` (this repository's own CI), `logs/`, `.claude/`.
@@ -168,3 +176,6 @@ Then the stateful cases, which a single fresh install does not exercise:
 | Apply `power-apps-code-app`, then `--profile react-vite --prune` | Dataverse assets removed; project-authored files and `.vscode/` untouched; no empty folders |
 | Change a template, re-run | drift warning names the file; the project copy is not overwritten |
 | `--dry-run` | nothing written, including the receipt |
+| `.github/README.md` is a shipped baseline version; re-run with `--prune` | removed |
+| Project's own `.github/README.md`, installed over **without** `--force`, then `--prune` | untouched |
+| The baseline README, edited by the project, then `--prune` | untouched |

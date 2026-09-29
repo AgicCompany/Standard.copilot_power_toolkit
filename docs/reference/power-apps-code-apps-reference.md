@@ -37,7 +37,6 @@ Instructions for generating high-quality Power Apps Code Apps using TypeScript, 
   │   └── models/         # Generated TypeScript models (Power Apps CLI)
   ├── utils/             # Utility functions and helpers
   ├── types/             # TypeScript type definitions
-  ├── PowerProvider.tsx  # Power Platform context wrapper
   └── main.tsx          # Application entry point
   ```
 - Keep generated files (`generated/services/`, `generated/models/`) separate from custom code
@@ -86,7 +85,7 @@ Instructions for generating high-quality Power Apps Code Apps using TypeScript, 
 - **Integrate PCF controls**: Embed Power Apps Component Framework controls in Code Apps
   ```typescript
   // Example: Using custom PCF control for data visualization
-  import { PCFControlWrapper } from './components/PCFControlWrapper';
+  import { PCFControlWrapper } from './components/pcf-control-wrapper';
 
   const MyComponent = () => {
     return (
@@ -197,7 +196,7 @@ Instructions for generating high-quality Power Apps Code Apps using TypeScript, 
 - Install key dependencies following official samples:
   - `@microsoft/power-apps` for Power Platform SDK
   - `@fluentui/react-components` for UI components
-  - `concurrently` for parallel script execution (dev dependency)
+  - `@microsoft/power-apps-vite` for the `powerApps()` Vite plugin (dev dependency)
 
 ### Data Management
 
@@ -211,82 +210,51 @@ Instructions for generating high-quality Power Apps Code Apps using TypeScript, 
 
 Wrap generated `*Service` calls in a hook that owns loading/error state, pagination, and retry —
 don't call the service directly from component bodies. The generated `getAll()` accepts
-`IGetAllOptions` (`select`, `filter`, `orderBy`, `top`, `skip`, `skipToken`, `maxPageSize`) — always
-pass `select` to avoid over-fetching columns.
+`IGetAllOptions` (`select`, `filter`, `orderBy`, `top`, `skip`, `skipToken`, `maxPageSize`; `skip` is
+rejected by the server, see below) — always pass `select` to avoid over-fetching columns.
 
 ```typescript
-// src/hooks/useAccounts.ts
-import { useCallback, useEffect, useState } from 'react';
-import { AccountsService } from '../generated/services/AccountsService';
-import type { Accounts } from '../generated/models/AccountsModel';
+// src/features/accounts/api/use-accounts.ts
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { AccountsService } from '@/generated/services/AccountsService';
 
-interface UseAccountsResult {
-  accounts: Accounts[];
-  isLoading: boolean;
-  error: Error | null;
-  hasMore: boolean;
-  loadMore: () => Promise<void>;
+const PAGE_SIZE = 50;
+
+// One key factory per feature: invalidation then has a single source of truth.
+export const accountKeys = {
+  all: ['accounts'] as const,
+  lists: () => [...accountKeys.all, 'list'] as const,
+};
+
+// The SDK does not throw: a failed call RETURNS { success: false, error }. Throw it yourself, or a
+// failure renders as an empty list. The error carries the HTTP status as `error.status`.
+async function fetchAccountsPage(skipToken: string | null) {
+  const result = await AccountsService.getAll({
+    select: ['accountid', 'name', 'accountnumber', 'address1_city'],
+    orderBy: ['name asc', 'accountid asc'],   // unique tie-breaker: stable pages
+    maxPageSize: PAGE_SIZE,                   // rows per request; NOT top (see below)
+    ...(skipToken ? { skipToken } : {}),
+  });
+  if (!result.success) throw result.error ?? new Error('Failed to load accounts');
+  return { rows: result.data, next: result.skipToken ?? null };
 }
 
-const MAX_RETRIES = 3;
-
-// Dataverse throttles under sustained load (HTTP 429). Retry with backoff instead of
-// surfacing a transient throttle as a user-facing error.
-async function withRetry<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
-  try {
-    return await fn();
-  } catch (err) {
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status === 429 && attempt < MAX_RETRIES) {
-      await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 500));
-      return withRetry(fn, attempt + 1);
-    }
-    throw err;
-  }
-}
-
-export function useAccounts(): UseAccountsResult {
-  const [accounts, setAccounts] = useState<Accounts[]>([]);
-  const [skipToken, setSkipToken] = useState<string | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetchPage = useCallback(async (token?: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await withRetry(() =>
-        AccountsService.getAll({
-          select: ['name', 'accountnumber', 'address1_city'],
-          top: 50,
-          skipToken: token,
-        })
-      );
-      setAccounts((prev) => (token ? [...prev, ...(result.data ?? [])] : result.data ?? []));
-      setSkipToken(result.skipToken);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load accounts'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPage();
-  }, [fetchPage]);
-
-  return {
-    accounts,
-    isLoading,
-    error,
-    hasMore: Boolean(skipToken),
-    loadMore: () => fetchPage(skipToken),
-  };
+export function useAccounts() {
+  return useInfiniteQuery({
+    queryKey: accountKeys.lists(),
+    queryFn: ({ pageParam }) => fetchAccountsPage(pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.next,     // null = no more pages
+    // Dataverse throttles under sustained load (HTTP 429). Retry only that, with backoff;
+    // a 400/403 retried three times just delays the real error.
+    retry: (count, error) => (error as { status?: number }).status === 429 && count < 3,
+    retryDelay: (attempt) => 2 ** attempt * 500,
+  });
 }
 ```
 
 - Always pass `select` — fetching every column on a wide table is a common, easy-to-avoid performance mistake.
-- Paginate with `skipToken`, not manual `skip` counting — Dataverse pages are cursor-based, not offset-based; `skip` doesn't behave the way SQL `OFFSET` does.
+- Paginate with `maxPageSize` + `skipToken`. Dataverse rejects `skip` outright (`$skip` returns HTTP 400, "Skip Clause is not supported in CRM", verified live), even though the generated type offers it. `top` is a cap on the total, not a page size: `top` below the page size returns that many rows and no next page.
 - Retry only on `429`. Don't blanket-retry every failure — a `400`/`403` retried 3 times just triples the wait before showing the user a real error.
 - **Update semantics**: only send the fields that actually changed (`AccountsService.update(id, { name: newName })`, not the whole re-fetched record). Sending unchanged fields back can false-trigger Dataverse business logic/workflows and corrupt audit history — this is documented Dataverse behavior, not a hypothetical.
 - Known current gaps in generated Dataverse services: no schema-change refresh (delete + re-add the data source instead), no FetchXML, no polymorphic lookups, no alternate keys. Don't spend time working around these as if they were bugs in your code.
@@ -384,15 +352,15 @@ export function useAccounts(): UseAccountsResult {
 - Follow git branching strategies appropriate for team size
 - Implement proper code review processes
 - Use linting and formatting tools (ESLint, Prettier)
-- Configure development scripts using concurrently:
-  - `"dev": "concurrently \"vite\" \"pa app run\""`
-  - `"build": "tsc -b && vite build"`
+- Development scripts, as in Microsoft's template: `"dev": "vite"` (the `powerApps()` plugin serves
+  the config and prints the Play URL) and `"build": "tsc -b && vite build"`. Never put `pa app run`
+  in `dev`: it runs `dev` itself, so the script would restart itself recursively.
 - Implement automated testing in CI/CD pipelines
 - Follow semantic versioning for releases
 
 ### Deployment and DevOps
 
-- Use `pnpm build && pa app push` for deployment — `&&`, never `|`, or a failed build still pushes
+- Use `pnpm build && pa app push --solution-id <guid>` for deployment — `&&`, never `|`, or a failed build still pushes
   the previous bundle
 - Implement proper environment management (dev, test, prod)
 - Use environment-specific configuration files

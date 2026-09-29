@@ -271,13 +271,13 @@ If it fails, `prompts/setup.prompt.md` has drifted from
 
 **Prompt:**
 ```
-Create a Counter component in src/components/Counter.tsx with a button that increments a count.
+Create a Counter component in src/components/counter.tsx with a button that increments a count.
 ```
 
 Deliberately says nothing about conventions.
 
-- **PASS:** function component, named export, typed props, `PascalCase.tsx`, no `React.FC`,
-  `className` merged via `cn()`, and a colocated `Counter.test.tsx` using `getByRole` + `userEvent`.
+- **PASS:** function component, named export, typed props, kebab-case file (`counter.tsx`), no `React.FC`,
+  `className` merged via `cn()`, and a colocated `counter.test.tsx` using `getByRole` + `userEvent`.
   Tailwind isn't installed yet, so **either** it sets Tailwind up **or** it says plainly that styling
   won't render — silence is a fail.
 - **PASS (partial, still good):** it skips something from the Definition of done but **names what it
@@ -550,11 +550,11 @@ Both results together are the real evidence. Either alone is not.
 
 **Prompt:**
 ```
-Create src/components/Messy.tsx with deliberately bad formatting: double quotes, missing semicolons,
+Create src/components/messy.tsx with deliberately bad formatting: double quotes, missing semicolons,
 and inconsistent indentation.
 ```
 
-Then check **on disk**: `cat src/components/Messy.tsx`
+Then check **on disk**: `cat src/components/messy.tsx`
 
 - **PASS:** reformatted despite the request.
 - **FAIL:** exactly as written.
@@ -663,10 +663,11 @@ pnpm install
 #   template's dependencies change. EDIT every value to true - do not create the file. Then re-run
 #   `pnpm install`. See the power-apps-code-app-scaffold skill.
 
-# 2. Authenticate and pick the environment
+# 2. Authenticate and pick the environment - BOTH CLIs; they keep separate sign-ins
 pa auth login
-pa auth status          # confirm the active profile is the one you meant
 pa auth status         # confirm the ACTIVE account, then check environmentId in power.config.json
+pac auth create --environment <environment-url-or-id>   # or `pac auth select` for an existing profile
+pac org who            # its Environment ID must match the environment above; D2 takes the org URL here
 
 # 3. Apply the baseline
 git init
@@ -713,8 +714,10 @@ pa app init --displayname "Baseline Test"
 I need to work with the Accounts table from Dataverse. Set that up.
 ```
 
-- **PASS:** `pa app add data-source --connector dataverse --table account` — **singular**, correcting the plural in
-  the prompt — then uses the generated service.
+- **PASS:** `pa app add data-source --connector dataverse --table account --org-url <org-url>` — **singular**,
+  correcting the plural in the prompt, with the org URL taken from `pac org who` after checking its
+  Environment ID matches `power.config.json` — then uses the generated service. Without `--org-url`,
+  `pa` can stop at an interactive prompt that hangs an agent's terminal.
 - **FAIL:** hand-writes a service class, calls the Web API directly with `fetch`, or passes the
   plural `accounts` (which errors).
 
@@ -753,9 +756,9 @@ Show a list of accounts with their name and city.
 | | PASS | FAIL |
 |---|---|---|
 | Call site | generated service wrapped in a hook in `features/*/api/` | service called from the component body |
-| Query | `useQuery` + key factory | `useEffect` + `useState` |
+| Query | `useQuery` (or `useInfiniteQuery` for a paged list) + key factory | `useEffect` + `useState` |
 | Columns | explicit `select` list | whole row fetched |
-| Paging | server-side (`top`/`skip`) | fetch-all then `.slice()` |
+| Paging | server-side (`maxPageSize` + returned `skipToken`) | fetch-all then `.slice()`, or `skip` (Dataverse rejects it with HTTP 400) |
 
 ### D4. Refuses to hand-edit generated code
 

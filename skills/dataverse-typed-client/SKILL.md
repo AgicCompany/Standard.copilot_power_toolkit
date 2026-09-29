@@ -25,8 +25,8 @@ For an entity `Accounts`, produce `src/features/accounts/api/`:
 api/
 ├── keys.ts        # query key factory — the single source of truth for invalidation
 ├── columns.ts     # explicit column lists (the `select` payload)
-├── useAccounts.ts # paged list query
-├── useAccount.ts  # single-record query
+├── use-accounts.ts # paged list query
+├── use-account.ts  # single-record query
 └── mutations.ts   # create / update / delete + invalidation
 ```
 
@@ -57,7 +57,7 @@ of a slow Code App.
 export const accountKeys = {
   all: ['accounts'] as const,
   lists: () => [...accountKeys.all, 'list'] as const,
-  list: (filter: AccountFilter, page: number) => [...accountKeys.lists(), filter, page] as const,
+  list: (filter: AccountFilter) => [...accountKeys.lists(), filter] as const,
   details: () => [...accountKeys.all, 'detail'] as const,
   detail: (id: string) => [...accountKeys.details(), id] as const,
 };
@@ -70,43 +70,59 @@ detail caches.
 ## Step 4 — Query hooks
 
 ```ts
-export function useAccounts(filter: AccountFilter, page = 0) {
-  return useQuery({
-    queryKey: accountKeys.list(filter, page),
-    queryFn: () => AccountsService.getAll({
-      select: [...ACCOUNT_LIST_COLUMNS],
-      filter: toODataFilter(filter),
-      top: PAGE_SIZE,
-      skip: page * PAGE_SIZE,
-    }),
+export function useAccounts(filter: AccountFilter) {
+  return useInfiniteQuery({
+    queryKey: accountKeys.list(filter),
+    queryFn: async ({ pageParam }) => {
+      const result = await AccountsService.getAll({
+        select: [...ACCOUNT_LIST_COLUMNS],
+        filter: toODataFilter(filter),
+        orderBy: ['name asc', 'accountid asc'],  // unique tie-breaker: stable pages
+        maxPageSize: PAGE_SIZE,                  // rows per request
+        ...(pageParam ? { skipToken: pageParam } : {}),
+      });
+      if (!result.success) throw result.error ?? new Error('Loading accounts failed.');
+      return { rows: result.data, next: result.skipToken ?? null };
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.next,      // null = no more pages
     staleTime: 60_000,       // decide per entity — reference data vs operational data differ
-    placeholderData: (prev) => prev,  // keeps the table stable while paging
   });
 }
 ```
 
+**Dataverse pages by continuation token, never by offset.** `skip` is in the generated
+`IGetAllOptions` type, but Dataverse rejects it: `$skip` returns **HTTP 400, "Skip Clause is not
+supported in CRM"** (verified live). A `skip: page * PAGE_SIZE` hook passes every mocked test and
+fails on the first real request. Page with `maxPageSize` and hand back the `skipToken` each response
+returns. The token only moves forward, so the UI is "Load more" or infinite scroll, not numbered
+pages or a `?page=` URL. Use `top` only to cap the *total* ("the latest 5"): with `top` below the
+page size you get that many rows and no next page.
+
 Set `staleTime` deliberately per entity. Reference/lookup tables tolerate minutes; records users
 edit concurrently need seconds or zero.
 
-### `top` is not optional, and "simple request" is not a reason to drop it
+### A bounded page is not optional, and "simple request" is not a reason to drop it
 
 **Observed failure.** Asked for "a list of accounts with their name and city", an agent read this
 skill, correctly built the feature folder, the key factory and the explicit column list — then called
-`getAll({ select })` with no bound, and flattened `list(filter, page)` to `list()`. Its own reasoning:
+`getAll({ select })` with no bound, and flattened `list(filter)` to `list()`. Its own reasoning:
 *"the request is straightforward… following the full architectural conventions goes beyond the simple
 scope."*
 
 That trade is backwards. The parts it kept are stylistic; the part it dropped is the one that
-decides whether the app works on real data. `getAll()` unbounded pulls **every row in the table** —
-on `account` or `contact` in a live tenant that is thousands of records fetched to render twenty,
-and it will look perfectly fine against a dev environment holding nine.
+decides whether the app works on real data. `getAll()` with no options sends the SDK's default
+page size of **500** — so it fetches 500 rows to render twenty, and a caller that ignores the
+returned `skipToken` silently shows only the first 500 once the table grows past that. Against a dev environment
+holding nine rows it looks perfectly fine.
 
 So, regardless of how small the request sounds:
 
-- **A list hook without `top` is incomplete.** Not "unoptimised" — incomplete.
+- **A list hook without `maxPageSize` and a `skipToken` path is incomplete.** Not "unoptimised" —
+  incomplete.
 - **Include `orderBy`.** Paging over an unordered set can repeat or skip rows between pages.
-- **Keep `page` in the key factory** even when the first screen shows one page. Adding it later means
-  revisiting every call site and every `invalidateQueries`.
+- **Keep the pages inside `useInfiniteQuery`**, not in the key. The key holds what changes the result
+  (the filter); invalidating `accountKeys.lists()` then refetches from the first page.
 - If you genuinely believe the table is bounded and tiny, say so explicitly and give the reason —
   do not silently omit the bound.
 

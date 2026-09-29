@@ -24,8 +24,12 @@ why it needs to be a hook.
 
 ## What It Does
 
-At session start, compares the last-modified time of `power.config.json` against the newest file in
-`src/generated/`. If the config is newer, it emits `additionalContext` — the one stdout channel
+At session start, finds every `power.config.json` in the repository (up to 6 levels deep, skipping
+`node_modules`, `.git`, `dist` and `build`) and compares each one's last-modified time against the
+newest file in the `src/generated/` **next to it**, which is where pa generates it. A root-layout
+app (`power.config.json` at the top) and a nested one (`src/frontend/power.config.json`, as in a
+multi-host template) are both covered, and so is a repository with several apps: one warning each,
+in a single message. If a config is newer, it emits `additionalContext` — the one stdout channel
 `sessionStart` parses and injects into the session — telling Copilot that:
 
 - generated services may not match the current data sources,
@@ -53,5 +57,5 @@ a false negative costs a runtime outage.
 | Env var | Default | Purpose |
 |---|---|---|
 | `SKIP_SCHEMA_DRIFT` | unset | `true` disables the hook entirely |
-| `POWER_CONFIG` | `power.config.json` | Path to the Power Apps config, relative to repo root |
-| `GENERATED_DIR` | `src/generated` | Directory holding Power Apps CLI generated services/models |
+| `POWER_CONFIG` | unset (search the repository) | Pin one config, relative to the repo root; skips the search |
+| `GENERATED_DIR` | `src/generated` next to each config | Generated folder for the pinned config; only read when `POWER_CONFIG` is set |

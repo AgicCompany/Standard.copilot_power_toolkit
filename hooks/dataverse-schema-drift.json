@@ -7,10 +7,6 @@
         "bash": ".github/hooks/scripts/check-schema-drift.sh",
         "powershell": ".github/hooks/scripts/check-schema-drift.ps1",
         "cwd": ".",
-        "env": {
-          "POWER_CONFIG": "power.config.json",
-          "GENERATED_DIR": "src/generated"
-        },
         "timeoutSec": 15
       }
     ]

@@ -49,6 +49,25 @@ statelessness, no async, the error contract, re-entry guards.
 
 The shell is: load, apply the rule, persist, record history, queue any notification as a row.
 
+### Shipping the plug-in
+
+Check the project first: a `.csproj` built with `Microsoft.PowerApps.MSBuild.Plugin` (what
+`pac plugin init` generates) produces a **plug-in package** (`.nupkg`); without it, a plain assembly.
+The package is the route to prefer, since it can carry dependent DLLs such as the rules from Step 3.
+All of the following was verified in a live environment:
+
+- **A package must target `net462`** (or `net471`). Microsoft documents 4.6.2 to 4.8 for plug-in
+  assemblies, but uploading a package built for `net48` was rejected: "Supported dotnet frameworks
+  are 'net471' and 'net462'".
+- **The first registration is manual**: Plugin Registration Tool (`pac tool prt`), *Register New
+  Package*, into the project's solution. `pac plugin push` cannot create it; it requires the id of an
+  existing package.
+- **Updates**: `pac plugin push --type Nuget --pluginId <package id> --pluginFile <.nupkg>
+  --environment <org url>`. New `IPlugin` classes in the package are registered by the push.
+- **Build with `--no-incremental`, then check the `.nupkg` contents before pushing.** An incremental
+  Release build refreshed the DLL but kept the old package, without the new class; it uploaded
+  cleanly and failed only when the Custom API ran.
+
 ## Step 5 — Register the step, then verify the stage
 
 **This is the step that decides whether you get a transaction at all.** Register the Custom API

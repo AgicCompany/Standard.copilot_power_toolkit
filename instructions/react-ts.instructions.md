@@ -80,9 +80,9 @@ the command and error, finish every item that doesn't depend on it, and name exa
 are unmet. "The project has no test runner so I didn't add one unasked" is not a blocker — it
 describes a prerequisite you never checked.
 
-1. **Typed props**, named export, `PascalCase.tsx` matching the component name.
+1. **Typed props**, named export, in a kebab-case file: `AccountCard` lives in `account-card.tsx`.
 2. **Accepts `className`**, merged last via `cn()` — even when the first caller doesn't pass one.
-3. **A colocated `<Name>.test.tsx`** querying by role/accessible name with `userEvent`.
+3. **A colocated test next to it** (`account-card.test.tsx` beside `account-card.tsx`) querying by role/accessible name with `userEvent`.
 4. **Styling that actually resolves.** If Tailwind or the shadcn theme isn't set up yet, set it up
    or say plainly that it isn't — see `shadcn-ui.instructions.md` preconditions. Never emit classes
    that silently resolve to nothing.
@@ -112,8 +112,9 @@ every `.tsx` — precisely so they don't depend on the skill being noticed.
 
 ## Components
 
-- **Function components only.** Named exports, one component per file, `PascalCase.tsx` matching the
-  component name.
+- **Function components only.** Named exports, one component per file, in a kebab-case file named after it
+  (`AccountCard` → `account-card.tsx`, `useAccounts` → `use-accounts.ts`). The names inside stay
+  PascalCase / `useCamelCase`, which React requires; only the file name is kebab-case.
 - **Props are typed inline or as `Props`** — no `React.FC` (it adds implicit children and buys
   nothing).
 - **A component that fetches, transforms, and renders is doing too much.** Fetching belongs in a
@@ -157,12 +158,22 @@ src/
 names — and generates its cross-feature zones by reading `src/features/`, so a new feature is covered
 the moment it exists.
 
-```bash
-pnpm add -D eslint-plugin-import-x eslint-plugin-check-file
-```
+Install `eslint-plugin-import-x` and `eslint-plugin-check-file` as dev dependencies with the package
+manager the lockfile shows. Then, if `src/` sits at the repository root:
+
 ```js
 import boundaries from './.github/eslint/import-boundaries.mjs';
 export default [ ...yourExistingConfig, ...boundaries ];
+```
+
+If the app lives in a subfolder (e.g. `src/frontend/src/`), install the plugins in the app, put
+`eslint.config.js` in the app folder and use the app variant, which loads the plugins from the app's
+own `node_modules`. The root wiring would find no features and enforce nothing; it warns when it
+detects that case.
+
+```js
+import { boundariesFor } from '../../.github/eslint/import-boundaries-app.mjs';
+export default [ ...yourExistingConfig, ...(await boundariesFor(import.meta.dirname)) ];
 ```
 
 **Do not edit that file inside a project** — it is baseline-owned and replaced on every re-sync. Its

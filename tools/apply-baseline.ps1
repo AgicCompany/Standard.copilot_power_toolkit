@@ -334,6 +334,23 @@ if ($Prune -and (Test-Path -LiteralPath $targetGithub)) {
     [void]$baselineOwned.Add($rel)
   }
 
+  # Files the baseline used to ship and no longer does. They are excluded now, so the loop above does
+  # not count them as baseline-owned. Remove one only when its content is byte-for-byte a version the
+  # baseline shipped (line endings ignored). The receipt is not proof: an install without -Force
+  # records a path it skipped, so a project's own .github/README.md would be listed there too.
+  if ($manifest.PSObject.Properties.Name -contains 'retired') {
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    foreach ($retired in @($manifest.retired)) {
+      $targetFile = [System.IO.Path]::Combine($targetGithub, $retired.path)
+      if (-not (Test-Path -LiteralPath $targetFile -PathType Leaf)) { continue }
+      $bytes = [System.IO.File]::ReadAllBytes($targetFile)
+      $lf = [byte[]]@($bytes | Where-Object { $_ -ne 13 })
+      $hash = -join ($sha.ComputeHash($lf) | ForEach-Object { $_.ToString('x2') })
+      if (@($retired.sha256) -contains $hash) { [void]$baselineOwned.Add($retired.path) }
+      else { Write-Info "kept: $($retired.path) (no longer shipped, but not a version the baseline wrote)" }
+    }
+  }
+
   $selected = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
   foreach ($p in $appliedPaths) { [void]$selected.Add($p) }
 

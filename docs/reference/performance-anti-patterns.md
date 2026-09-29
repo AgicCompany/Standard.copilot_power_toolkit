@@ -575,7 +575,7 @@ npx svgo input.svg -o output.svg
 import { Button } from './components';
 
 // GOOD — direct import
-import { Button } from './components/Button';
+import { Button } from './components/button';
 ```
 
 ### B2: CommonJS require() Preventing Tree Shaking

@@ -22,7 +22,7 @@ This checklist ensures thorough and consistent code reviews across all developme
 
 - [ ] Code follows the established project architecture patterns
 - [ ] New components/modules are placed in appropriate directories
-- [ ] File and directory naming follows project conventions (camelCase for utils, kebab-case for content)
+- [ ] File and folder names are kebab-case (`account-card.tsx`, `use-accounts.ts`); the component and hook names inside stay PascalCase / `useCamelCase`
 - [ ] Code is properly modularized and follows DRY principles
 - [ ] No unnecessary code duplication
 - [ ] Functions and classes have single responsibilities (SRP)

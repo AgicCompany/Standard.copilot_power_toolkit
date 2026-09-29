@@ -138,6 +138,75 @@ expect_guard "write .test.tsx"                     guard-native-dialogs.sh ALLOW
 expect_guard "write .md"                           guard-native-dialogs.sh ALLOW "$(write 'README.md' 'confirm(1)')"
 unset POWER_CONFIG
 
+# Without POWER_CONFIG the guard searches upwards from the written file. The old check looked only at
+# the working directory, so a nested app (src/frontend/power.config.json, as in a multi-host
+# template) was never recognised. Each case runs from the project root, as the host does.
+expect_guard_in() {
+  local dir="$1" label="$2" expected="$3" payload="$4"
+  CASES=$((CASES + 1))
+  local out rc got
+  out="$(cd "$dir" && printf '%s' "$payload" | bash "$SCRIPTS/guard-native-dialogs.sh" 2>&1)"; rc=$?
+  if [[ $rc -ne 0 ]] || printf '%s' "$out" | grep -q '"permissionDecision"[[:space:]]*:[[:space:]]*"deny"'; then got="DENY"; else got="ALLOW"; fi
+  if [[ "$got" == "$expected" ]]; then
+    printf 'ok   %-44s expect=%-5s got=%s\n' "$label" "$expected" "$got"
+  else
+    FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s expect=%-5s got=%s\n     output: %s\n' "$label" "$expected" "$got" "$out"
+  fi
+}
+NEST="$WORK/nested"; mkdir -p "$NEST/src/frontend/src" "$NEST/src/other"; printf '{}' > "$NEST/src/frontend/power.config.json"
+ROOTAPP="$WORK/rootapp"; mkdir -p "$ROOTAPP/src"; printf '{}' > "$ROOTAPP/power.config.json"
+PLAIN="$WORK/plain"; mkdir -p "$PLAIN/src"
+C='if (window.confirm("x")) y()'
+expect_guard_in "$NEST"    "nested app, file inside it"         DENY  "$(write 'src/frontend/src/App.tsx' "$C")"
+expect_guard_in "$NEST"    "nested app, absolute path"          DENY  "$(write "$NEST/src/frontend/src/App.tsx" "$C")"
+expect_guard_in "$NEST"    "nested app, terminal write"         DENY  "$(term "Set-Content -Path src/frontend/src/App.tsx -Value 'if (window.confirm(1)) x()'")"
+expect_guard_in "$NEST"    "nested repo, file outside the app"  ALLOW "$(write 'src/other/App.tsx' "$C")"
+expect_guard_in "$ROOTAPP" "root-layout app"                    DENY  "$(write 'src/App.tsx' "$C")"
+expect_guard_in "$ROOTAPP" "root-layout app, backslash path"    DENY  "$(write 'src\App.tsx' "$C")"
+expect_guard_in "$PLAIN"   "no power.config.json anywhere"      ALLOW "$(write 'src/App.tsx' "$C")"
+# Path shapes found in review of the first version: a file: URI failed open, and textual .. segments
+# walked through src/frontend and blocked a file outside the app.
+expect_guard_in "$NEST"    "nested app, file: URI"              DENY  "$(write "file://$NEST/src/frontend/src/App.tsx" "$C")"
+expect_guard_in "$NEST"    "nested app, file: URI with %20"     DENY  "$(write "file://$NEST/src/frontend/src/My%20Page.tsx" "$C")"
+expect_guard_in "$NEST"    ".. leading out of the app"          ALLOW "$(write 'src/frontend/../other/App.tsx' "$C")"
+expect_guard_in "$NEST"    ".. leading into the app"            DENY  "$(write 'src/other/../frontend/src/App.tsx' "$C")"
+expect_guard_in "$NEST"    "path outside the repository"        ALLOW "$(write "$ROOTAPP/src/App.tsx" "$C")"
+
+echo "--- check-schema-drift.sh: finds every Code App, not only the root ---"
+# The hook config used to pin POWER_CONFIG=power.config.json, so a nested app was never checked.
+expect_drift_in() {
+  local dir="$1" label="$2" expected="$3" must_mention="${4:-}"
+  CASES=$((CASES + 1))
+  local out got
+  out="$(cd "$dir" && env -u POWER_CONFIG -u GENERATED_DIR bash "$SCRIPTS/check-schema-drift.sh" </dev/null 2>&1)"
+  if printf '%s' "$out" | grep -q 'additionalContext'; then got="SPEAK"; else got="QUIET"; fi
+  if [[ "$got" == "$expected" ]] && { [[ -z "$must_mention" ]] || printf '%s' "$out" | grep -qF "$must_mention"; }; then
+    printf 'ok   %-44s expect=%-5s got=%s\n' "$label" "$expected" "$got"
+  else
+    FAILURES=$((FAILURES + 1)); printf 'FAIL %-44s expect=%-5s got=%s (must mention: %s)\n     output: %s\n' "$label" "$expected" "$got" "$must_mention" "$out"
+  fi
+}
+new_app() {  # new_app <dir> <config-age: newer|older|nogen>
+  mkdir -p "$1/src/generated/services"
+  printf '{}' > "$1/power.config.json"; printf 'x' > "$1/src/generated/services/S.ts"
+  case "$2" in
+    newer) touch -d '2020-01-01' "$1/src/generated/services/S.ts" ;;
+    older) touch -d '2020-01-01' "$1/power.config.json" ;;
+    nogen) rm -rf "$1/src/generated" ;;
+  esac
+}
+D="$WORK/drift"
+new_app "$D/nested-drift/src/frontend" newer;  expect_drift_in "$D/nested-drift" "nested app, config newer"       SPEAK "src/frontend/power.config.json"
+new_app "$D/nested-ok/src/frontend" older;     expect_drift_in "$D/nested-ok"    "nested app, generated newer"    QUIET
+new_app "$D/nested-nogen/src/frontend" nogen;  expect_drift_in "$D/nested-nogen" "nested app, never generated"    SPEAK "src/frontend/src/generated"
+new_app "$D/root-drift" newer;                 expect_drift_in "$D/root-drift"   "root-layout app, config newer"  SPEAK "'power.config.json' was modified"
+mkdir -p "$D/none/src";                        expect_drift_in "$D/none"         "no Code App"                    QUIET
+mkdir -p "$D/vendored/node_modules/pkg"; printf '{}' > "$D/vendored/node_modules/pkg/power.config.json"
+expect_drift_in "$D/vendored" "power.config.json only in node_modules" QUIET
+new_app "$D/two/apps/a" newer; new_app "$D/two/apps/b" newer
+expect_drift_in "$D/two" "two apps, both drifting (app a)" SPEAK "apps/a/power.config.json"
+expect_drift_in "$D/two" "two apps, both drifting (app b)" SPEAK "apps/b/power.config.json"
+
 echo "--- check-project-context.sh ---"
 printf '# Project Context\n- Name: Real App\n- Domain: A real domain\n' > "$WORK/filled.md"
 printf '# Project Context\n- Name: Real App\n- Domain: *e.g. "something"*\n' > "$WORK/partial.md"
