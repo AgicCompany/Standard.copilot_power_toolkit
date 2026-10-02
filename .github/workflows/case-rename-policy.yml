@@ -1,0 +1,116 @@
+name: Case Rename Policy
+
+# Source workflow: reconciliation copies this trusted file into every active
+# managed repository before requiring its `Case rename policy` status check.
+# Blocks pull requests that rename tracked files changing only letter casing
+# (e.g. Readme.md -> readme.md) or that leave tracked paths colliding
+# case-insensitively (e.g. Docs/a.md + docs/A.md). Both break checkouts on the
+# case-insensitive filesystems (Windows/macOS defaults) used across the org.
+#
+# Security: runs from the base branch's workflow definition
+# (pull_request_target) so a pull request cannot neuter its own check. The PR
+# head is fetched as git objects only — its files are never checked out to disk
+# and nothing from the PR tree is executed. Keep the token read-only: do not
+# enable modes that comment on or otherwise modify pull requests.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  case-rename-policy:
+    name: Case rename policy
+    # This repository is intentionally outside management scope
+    # (config/management-exclusions.yaml) — the check runs on managed repos only.
+    if: github.repository != 'AgicCompany/org-github-management'
+    runs-on: ubuntu-latest
+    env:
+      BASE_REF: ${{ github.event.pull_request.base.ref }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      # Default checkout under pull_request_target is the base repository —
+      # trusted content. Full history is needed for the merge-base computation.
+      - name: Checkout base repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR head objects
+        run: git fetch --no-tags origin "$HEAD_SHA"
+
+      # The policy is relational — did a path's casing change between the merge
+      # base and the head? — so compare folded path spellings between the two
+      # trees. Rename detection (-M) would miss a case-only rename whose content
+      # changed enough to fall below the similarity threshold; a single-tree
+      # scan would miss a lone rename (no collision remains in one tree).
+      # Folded keys with several distinct base spellings (a pre-existing
+      # collision) are ambiguous, so rename inference skips them; the collision
+      # step below still rejects a head that leaves such a collision in place.
+      - name: Detect case-only renames
+        run: |
+          merge_base="$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" \
+            || { echo "git merge-base failed — cannot evaluate the diff"; exit 1; }
+          base_tree="$(git ls-tree -r --name-only "$merge_base")" \
+            || { echo "git ls-tree failed on the merge base"; exit 1; }
+          head_tree="$(git ls-tree -r --name-only "$HEAD_SHA")" \
+            || { echo "git ls-tree failed on the head tree"; exit 1; }
+          declare -A base_spelling=()
+          # Ambiguous folded keys (multiple distinct base spellings): a head
+          # spelling difference there may be collision cleanup, not a rename.
+          declare -A base_ambiguous=()
+          while IFS= read -r path; do
+            if [[ -n "$path" ]]; then
+              folded="${path,,}"
+              if [[ -n "${base_spelling[$folded]:-}" && "${base_spelling[$folded]}" != "$path" ]]; then
+                base_ambiguous["$folded"]=1
+              fi
+              base_spelling["$folded"]="$path"
+            fi
+          done <<< "$base_tree"
+          conflicts=0
+          while IFS= read -r path; do
+            if [[ -z "$path" ]]; then continue; fi
+            folded="${path,,}"
+            if [[ -n "${base_ambiguous[$folded]:-}" ]]; then continue; fi
+            if [[ -n "${base_spelling[$folded]:-}" && "${base_spelling[$folded]}" != "$path" ]]; then
+              printf 'Case-only rename: %s -> %s\n' "${base_spelling[$folded]}" "$path"
+              conflicts=1
+            fi
+          done <<< "$head_tree"
+          if [[ "$conflicts" -ne 0 ]]; then
+            echo "Keep the original casing, or choose a final path that differs" \
+              "by more than letter case."
+            exit 1
+          fi
+          echo "No case-only renames found."
+
+      # Catches colliding paths regardless of how the commits introduced them
+      # (a pure add of a colliding path is not a rename).
+      - name: Detect case-colliding paths
+        run: |
+          tree="$(git ls-tree -r --name-only "$HEAD_SHA")" \
+            || { echo "git ls-tree failed — cannot evaluate the tree"; exit 1; }
+          declare -A seen=()
+          conflicts=0
+          while IFS= read -r path; do
+            if [[ -z "$path" ]]; then continue; fi
+            folded="${path,,}"
+            if [[ -n "${seen[$folded]:-}" ]]; then
+              printf 'Case-insensitive collision: %s <-> %s\n' "${seen[$folded]}" "$path"
+              conflicts=1
+            else
+              seen[$folded]="$path"
+            fi
+          done <<< "$tree"
+          if [[ "$conflicts" -ne 0 ]]; then
+            echo "Tracked paths must be unique under ASCII case folding:" \
+              "Windows and macOS checkouts cannot hold both."
+            exit 1
+          fi
+          echo "No case-colliding paths found."
