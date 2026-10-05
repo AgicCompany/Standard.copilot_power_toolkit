@@ -3,9 +3,11 @@ name: Case Rename Policy
 # Source workflow: reconciliation copies this trusted file into every active
 # managed repository before requiring its `Case rename policy` status check.
 # Blocks pull requests that rename tracked files changing only letter casing
-# (e.g. Readme.md -> readme.md) or that leave tracked paths colliding
-# case-insensitively (e.g. Docs/a.md + docs/A.md). Both break checkouts on the
-# case-insensitive filesystems (Windows/macOS defaults) used across the org.
+# (e.g. Readme.md -> readme.md), that leave tracked paths colliding
+# case-insensitively (e.g. Docs/a.md + docs/A.md), or that add a path under a
+# differently-cased spelling of an existing path (e.g. docs/README.md where
+# DOCS/ exists). All three break checkouts on the case-insensitive filesystems
+# (Windows/macOS defaults) used across the org.
 #
 # Security: runs from the base branch's workflow definition
 # (pull_request_target) so a pull request cannot neuter its own check. The PR
@@ -114,3 +116,68 @@ jobs:
             exit 1
           fi
           echo "No case-colliding paths found."
+
+      # A head-only tree scan misses additions under a differently-cased
+      # spelling of a path that only exists in the base tree (docs/README.md
+      # added where only DOCS/ existed): the merged tree never materializes,
+      # so the collision is invisible in either tree alone. Compare head paths
+      # against every base path AND its directory prefixes, case-folded.
+      - name: Detect paths colliding with base-tree paths
+        run: |
+          merge_base="$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" \
+            || { echo "git merge-base failed — cannot evaluate the diff"; exit 1; }
+          base_tree="$(git ls-tree -r --name-only "$merge_base")" \
+            || { echo "git ls-tree failed on the merge base"; exit 1; }
+          head_tree="$(git ls-tree -r --name-only "$HEAD_SHA")" \
+            || { echo "git ls-tree failed on the head tree"; exit 1; }
+          declare -A base_folded=()
+          # Folded keys with several distinct base spellings (a pre-existing
+          # collision) are ambiguous: a head path touching such a key may be
+          # collision cleanup, not a new violation. The head-tree collision
+          # scan above still rejects a head that leaves the collision in place.
+          declare -A base_ambiguous=()
+          record_base() {
+            local key="$1" spelling="$2"
+            if [[ -n "${base_folded[$key]:-}" && "${base_folded[$key]}" != "$spelling" ]]; then
+              base_ambiguous["$key"]=1
+            else
+              base_folded["$key"]="$spelling"
+            fi
+          }
+          while IFS= read -r path; do
+            if [[ -n "$path" ]]; then record_base "${path,,}" "$path"; fi
+            dir="$path"
+            while [[ "$dir" == */* ]]; do
+              dir="${dir%/*}"
+              record_base "${dir,,}" "$dir"
+            done
+          done <<< "$base_tree"
+          conflicts=0
+          while IFS= read -r path; do
+            if [[ -z "$path" ]]; then continue; fi
+            folded="${path,,}"
+            probe="$path"
+            while [[ "$probe" == */* ]]; do
+              probe="${probe%/*}"
+              pfold="${probe,,}"
+              if [[ -z "${base_ambiguous[$pfold]:-}" && -n "${base_folded[$pfold]:-}" \
+                  && "${base_folded[$pfold]}" != "$probe" ]]; then
+                printf 'Case-colliding path: %s conflicts with existing %s\n' \
+                  "$path" "${base_folded[$pfold]}"
+                conflicts=1
+                break
+              fi
+            done
+            if [[ -z "${base_ambiguous[$folded]:-}" && -n "${base_folded[$folded]:-}" \
+                && "${base_folded[$folded]}" != "$path" ]]; then
+              printf 'Case-colliding path: %s conflicts with existing %s\n' \
+                "$path" "${base_folded[$folded]}"
+              conflicts=1
+            fi
+          done <<< "$head_tree"
+          if [[ "$conflicts" -ne 0 ]]; then
+            echo "Add files under the existing casing of the path," \
+              "or move the content to a case-distinct path."
+            exit 1
+          fi
+          echo "No paths collide with the base tree."
