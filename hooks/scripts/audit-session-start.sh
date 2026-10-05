@@ -24,12 +24,20 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 CWD=$(pwd)
 LEVEL="${GOVERNANCE_LEVEL:-standard}"
 
-jq -Rn \
-  --arg timestamp "$TIMESTAMP" \
-  --arg cwd "$CWD" \
-  --arg level "$LEVEL" \
-  '{"timestamp":$timestamp,"event":"session_start","governance_level":$level,"cwd":$cwd}' \
-  >> logs/copilot/governance/audit.log
+# Without jq, write a reduced line rather than fail: under `set -e` a missing jq exited 127 and the
+# hook errored on every session. Hand-built JSON, so only sanitised values; cwd is left out.
+if command -v jq >/dev/null 2>&1; then
+  jq -Rn \
+    --arg timestamp "$TIMESTAMP" \
+    --arg cwd "$CWD" \
+    --arg level "$LEVEL" \
+    '{"timestamp":$timestamp,"event":"session_start","governance_level":$level,"cwd":$cwd}' \
+    >> logs/copilot/governance/audit.log
+else
+  SAFE_LEVEL="$(printf '%s' "$LEVEL" | tr -cd 'A-Za-z0-9_-')"
+  printf '{"timestamp":"%s","event":"session_start","governance_level":"%s","log":"reduced-no-jq"}\n' \
+    "$TIMESTAMP" "$SAFE_LEVEL" >> logs/copilot/governance/audit.log
+fi
 
 # stdout is PARSED as JSON on sessionStart. A status line here silently suppresses additionalContext
 # from EVERY other sessionStart hook. The real record goes to the log file above.

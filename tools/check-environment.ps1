@@ -21,7 +21,7 @@
 [CmdletBinding()]
 param(
   [Alias('Profile')]
-  [ValidateSet('react-vite', 'power-apps-code-app', 'baseline-authoring', 'full')]
+  [ValidateSet('react-vite', 'power-apps-code-app', 'power-apps-canvas-migration', 'baseline-authoring', 'full')]
   [string]$ProfileName = 'react-vite'
 )
 
@@ -50,19 +50,19 @@ $checks = @(
      Install = 'winget install --id Git.Git -e'
      Why = 'cloning this repo; the delivery agent and several hooks shell out to git.' }
 
-  @{ Name = 'Node.js (LTS)'; Cmd = 'node'; Required = $true; Profiles = @('react-vite', 'power-apps-code-app', 'full')
+  @{ Name = 'Node.js (LTS)'; Cmd = 'node'; Required = $true; Profiles = @('react-vite', 'power-apps-code-app', 'power-apps-canvas-migration', 'full')
      Install = 'winget install --id OpenJS.NodeJS.LTS -e'
      Why = 'Vite, the test runner, and the build-gate/lint-fix hooks (which call npx).' }
 
-  @{ Name = 'pnpm'; Cmd = 'pnpm'; Required = $true; Profiles = @('react-vite', 'power-apps-code-app', 'full')
+  @{ Name = 'pnpm'; Cmd = 'pnpm'; Required = $false; Profiles = @('react-vite', 'power-apps-code-app', 'power-apps-canvas-migration', 'full')
      Install = 'npm install -g pnpm     (or: corepack enable)'
-     Why = 'THE package manager for this baseline - copilot-instructions.md says never suggest npm or yarn. Scaffolding with npm puts a contradiction in front of Copilot from turn one.' }
+     Why = 'optional - only for a project whose lockfile is pnpm-lock.yaml. The baseline names no package manager: the lockfile decides (docs/reference/package-managers.md), and npm ships with Node.' }
 
-  @{ Name = 'Power Apps CLI (pa)'; Cmd = 'pa'; Required = $true; Profiles = @('power-apps-code-app', 'full')
+  @{ Name = 'Power Apps CLI (pa)'; Cmd = 'pa'; Required = $true; Profiles = @('power-apps-code-app', 'power-apps-canvas-migration', 'full')
      Install = 'npm install --global @microsoft/power-apps-cli'
      Why = 'pa app init / add data-source / push. Nothing in the Code App workflow works without it. This REPLACES the legacy pac code commands, which cannot add Dataverse actions or functions at all - a project needing a Custom API must be on pa.' }
 
-  @{ Name = 'Power Platform CLI (pac)'; Cmd = 'pac'; Required = $false; Profiles = @('power-apps-code-app', 'full')
+  @{ Name = 'Power Platform CLI (pac)'; Cmd = 'pac'; Required = $false; Profiles = @('power-apps-code-app', 'power-apps-canvas-migration', 'full')
      Install = 'dotnet tool install --global Microsoft.PowerApps.CLI.Tool    (or the VS Code Power Platform Tools extension)'
      Why = 'optional - the legacy CLI. Still used for solution-level work (pac solution) that the npm CLI does not cover. Not needed for the code app itself.' }
 

@@ -124,13 +124,13 @@ For content quality principles (what to include and what to leave out), see [Wri
 - User wants to debug frontend behavior with browser console logs
 ```
 
-**`## Prerequisites`** — Only include if the skill requires tools, services, or configuration that Copilot cannot assume are available. List exact install commands.
+**`## Prerequisites`** — Only include if the skill requires tools, services, or configuration that Copilot cannot assume are available. List exact install commands. Write package-manager commands with the placeholders from `docs/reference/package-managers.md` (`<pm>`, `<pm-add>`, `<pm-exec>`…): the skill ships into projects on npm, pnpm and yarn, and a hard-coded `pnpm add` is wrong in two of them.
 
 ```markdown
 ## Prerequisites
 
-- [Playwright](https://playwright.dev/) installed: `pnpm add -D @playwright/test`
-- At least one browser engine installed: `pnpm exec playwright install chromium`
+- [Playwright](https://playwright.dev/) installed: `<pm-add> -D @playwright/test`
+- At least one browser engine installed: `<pm-exec> playwright install chromium`
 ```
 
 **`## Step-by-Step Workflows`** — Numbered steps for repeatable procedures where sequence matters (build, deploy, environment setup). Describe WHAT to accomplish at each stage, not hardcoded file paths or line numbers — steps should be adaptable to different project structures. For complex workflows (>5 steps), split into `references/` files and link to them.
@@ -140,9 +140,9 @@ For content quality principles (what to include and what to leave out), see [Wri
 
 ### Deploy to Staging
 
-1. Build the project: `pnpm run build`
-2. Run pre-deploy validation: `pnpm run validate`
-3. Deploy to staging: `pnpm run deploy --env staging` (spelled out: bare `pnpm deploy` is a built-in pnpm command, not your script)
+1. Build the project: `<pm> run build`
+2. Run pre-deploy validation: `<pm> run validate`
+3. Deploy to staging: `<pm> run deploy --env staging` (spelled out: in pnpm, bare `pnpm deploy` is a built-in command, not your script)
 4. Verify the health endpoint returns 200
 ```
 
@@ -164,7 +164,7 @@ For content quality principles (what to include and what to leave out), see [Wri
 
 | Issue | Solution |
 |-------|----------|
-| Plugin won't connect | Check servers are running (`pnpm run start:all`) |
+| Plugin won't connect | Check servers are running (`<pm> run start:all`) |
 | Browser blocks localhost | Allow local network access, or try a different browser |
 | Tool execution times out | Ensure the plugin UI is open and shows "Connected" |
 ```

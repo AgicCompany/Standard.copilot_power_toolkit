@@ -14,6 +14,12 @@ A push resolves its target from **two** pieces of state, and you must check both
 account is global CLI state that persists between sessions; the target environment is pinned in the
 project's `power.config.json`.
 
+Run these, and everything below, **from the folder of the app being deployed** — the one holding
+its `power.config.json` (`src/frontend/` in a multi-host repo, not the repository root). Search for
+`power.config.json` first, skipping `node_modules`: if there is more than one and the user has not
+said which app to deploy, **ask before running anything**. A deploy against a guessed config publishes
+the wrong app.
+
 ```bash
 pa auth status                          # signed-in accounts, and which is active
 cat power.config.json                   # read environmentId — this is what the push will hit
@@ -43,13 +49,15 @@ was still signed in to a client tenant from earlier work. Check each before anyt
 ## The deploy sequence
 
 Order matters. `pa app push` publishes whatever is in the build output directory — it does not
-build for you. Shown with pnpm; use the package manager `copilot-instructions.md` names (which
-`/setup` aligns with the project's lockfile).
+build for you. `<pm>` is the package manager the project's lockfile shows, recorded in
+`project-context.md` (`docs/reference/package-managers.md`). Run every command from the folder that
+holds the app's `package.json` and `power.config.json`.
 
 ```bash
-pnpm install                          # 1. dependencies match the lockfile
-pnpm lint                             # 2.
-pnpm build                            # 3. produces dist/ — on the default scaffold this is
+<pm-ci>                               # 1. install EXACTLY the lockfile (npm ci, pnpm install
+                                      #    --frozen-lockfile, …) - a plain install may resolve past it
+<pm> run lint                         # 2.
+<pm> run build                        # 3. produces dist/ — on the default scaffold this is
                                       #    `tsc -b && vite build`, so it typechecks too
 pa app push --solution-id <guid>      # 4. publishes dist/ into that solution
 ```
@@ -57,9 +65,9 @@ pa app push --solution-id <guid>      # 4. publishes dist/ into that solution
 **Run only the scripts this project actually defines.** Read `package.json` first. The default Code
 App scaffold (Vite template + `pa app init`) defines `dev`, `build`, `lint`, `preview` — **no
 `typecheck`, no `test`.** Inventing steps costs a real deploy: each of these is a stop-on-failure
-gate, so a missing script exits non-zero with `ERR_PNPM_NO_SCRIPT` and halts the sequence before the
-push. Run `pnpm typecheck` and `pnpm test` when they exist, skip them when they do not, and say which
-you skipped and why.
+gate, so a missing script exits non-zero (npm: `Missing script`; pnpm: `ERR_PNPM_NO_SCRIPT`) and
+halts the sequence before the push. Run `<pm> run typecheck` and `<pm> run test` when they exist,
+skip them when they do not, and say which you skipped and why.
 
 Where typechecking is not folded into `build`, run it separately — a `vite build` alone does not
 typecheck.
@@ -124,7 +132,7 @@ pipeline rather than after it fails at the push.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Push succeeds, app shows old content | `pnpm build` not run, or pushed from a stale `dist/` | Rebuild, confirm `dist/` mtime, push again |
+| Push succeeds, app shows old content | `<pm> run build` not run, or pushed from a stale `dist/` | Rebuild, confirm `dist/` mtime, push again |
 | Blank white app after deploy | App waiting on SDK initialization | v1.0 apps must not gate render on SDK init — see `docs/reference/power-apps-code-apps-reference.md` |
 | Auth/401 errors only after deploy | Connection not shared, or missing in target environment | Verify connections in the target; re-add the data source there |
 | Data works locally, fails deployed | Local play runs as you, with your connections; deployed users need theirs | Test with a real connection before promoting |

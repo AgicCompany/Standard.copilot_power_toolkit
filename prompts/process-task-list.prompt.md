@@ -16,6 +16,12 @@ Guidelines for managing task lists in markdown files to track progress on comple
 - **Completion protocol:**  
   1. When you finish a **sub‑task**, immediately mark it as completed by changing `[ ]` to `[x]`.  
   2. If **all** subtasks underneath a parent task are now `[x]`, also mark the **parent task** as completed.  
+- **Version control** (same policy in the Italian prompt — keep them aligned):
+  1. Before starting, if the project is a git repository, check the working tree is clean
+     (`git status --porcelain` prints nothing). If it is not, ask the user how to proceed.
+  2. Follow `instructions/git.instructions.md` and the project's Gitflow rules.
+  3. When a **parent task** is complete, propose a conventional commit message for it. **Do not
+     commit yourself** — the user, or the `delivery` agent (the only agent that runs git), commits.
 - Stop after each sub‑task and wait for the user’s go‑ahead.
 
 ## Task List Maintenance

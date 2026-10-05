@@ -33,15 +33,21 @@ Copilot Chat agent picker, not `@mention` — see `AGENTS.md`).
 
 ## Step 1 — Scaffold the base Vite/React app
 
+**Decide the package manager first, and write it down.** A new project has no lockfile, so nothing
+decides it for you: check `project-context.md`, and if it names none, **ask the user** — npm, pnpm or
+yarn — and record the answer there before installing anything. Every later command uses it
+(`<pm>`, `<pm-dlx>`: `docs/reference/package-managers.md`), and a second package manager later
+means a second lockfile. Microsoft's samples use `npm`; keep their commands only if npm is the choice.
+
 ```bash
-pnpm dlx degit github:microsoft/PowerAppsCodeApps/templates/vite my-app
+<pm-dlx> degit github:microsoft/PowerAppsCodeApps/templates/vite my-app
 cd my-app
-pnpm install
+<pm> install
 ```
 
-Microsoft's samples and quickstarts use `npm`. This baseline uses **pnpm** exclusively — translate
-their commands rather than pasting them, or the very first thing in the project contradicts
-`copilot-instructions.md`.
+### pnpm only: approve dependency build scripts
+
+Skip this section unless the project uses pnpm.
 
 **`pnpm install` will end with `ERR_PNPM_IGNORED_BUILDS`.** pnpm 10+ refuses to run dependency build
 scripts until they are approved, and the refusal blocks **every** `pnpm <script>` afterwards — not
@@ -94,7 +100,7 @@ pa app init --display-name "<App Display Name>" --environment-id <environment-id
 This wires up `power.config.json` and the Power Platform SDK bindings. Verify it worked:
 
 ```bash
-pnpm dev
+<pm> run dev
 ```
 
 Open the **Local Play** URL it prints, **in the same browser profile** you used to sign in to your
@@ -199,8 +205,8 @@ Microsoft's "Connect your code app to data" doc; don't assume the Dataverse shor
 ## Step 5 — Verify, then push
 
 ```bash
-pnpm dev                        # local check
-pnpm build && pa app push --solution-id <guid>     # publish into the project's solution
+<pm> run dev                    # local check
+<pm> run build && pa app push --solution-id <guid>     # publish into the project's solution
 ```
 
 `<guid>` is the id of the solution this app belongs in: run `pa solution list` and ask the user which

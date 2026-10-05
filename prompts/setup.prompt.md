@@ -19,7 +19,12 @@ You are an expert project analyzer specialized in initializing GitHub Copilot in
 Perform a thorough analysis of the current project by examining:
 
 **Technology Stack Detection:**
-- Package configuration files (`package.json`, `pnpm-lock.yaml`, `*.csproj`, `requirements.txt`, `Gemfile`, etc.)
+- Package configuration files (`package.json`, `*.csproj`, `requirements.txt`, `Gemfile`, etc.)
+- **The package manager, from the lockfile** — `package-lock.json` npm, `pnpm-lock.yaml` pnpm,
+  `yarn.lock` yarn (next to the app's `package.json`, else at the repository root). Two lockfiles: report
+  it as a defect. **No lockfile** (a new project): ask the user once which to use. Either way, record it
+  in `project-context.md` under Package manager — every baseline command depends on it
+  (`docs/reference/package-managers.md`).
 - Framework detection (React, Next.js, Astro, ASP.NET Core, Laravel, etc.)
 - Build tools and bundlers (Vite, Webpack, esbuild, etc.)
 - Testing frameworks (Playwright, Jest, xUnit, etc.)

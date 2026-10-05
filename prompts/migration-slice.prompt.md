@@ -23,7 +23,7 @@ Implement one vertical slice from Canvas parity to React.
 2. Keep changes localized to the smallest set of files.
 3. Preserve existing behavior outside the targeted slice.
 4. Add or update validations/error handling as needed.
-5. Run `pnpm run build` and report result.
+5. Run `<pm> run build` (the lockfile's package manager) and report result.
 
 ### Required Report
 - Files changed
@@ -47,7 +47,7 @@ Implementa una slice verticale di parita da Canvas a React.
 2. Mantenere le modifiche localizzate al minor numero di file possibile.
 3. Preservare il comportamento esistente fuori dalla slice target.
 4. Aggiungere o aggiornare validazioni/gestione errori quando necessario.
-5. Eseguire `pnpm run build` e riportare il risultato.
+5. Eseguire `<pm> run build` (il package manager del lockfile) e riportare il risultato.
 
 ### Report Richiesto
 - File modificati

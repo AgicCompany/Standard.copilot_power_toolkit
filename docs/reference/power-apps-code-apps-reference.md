@@ -275,7 +275,9 @@ export function useAccounts() {
     ? await AccountService.get(customerId)
     : await ContactService.get(customerId);
   ```
-- **Complex relationship queries**: Use $expand and $filter for efficient data retrieval
+- **Complex relationship queries**: the generated services have no `$expand`. Query the related
+  table separately (one `filter` over the collected ids, not one request per row), use a denormalised
+  column, or move the read into a function Custom API
 - **Relationship validation**: Implement business rules for relationship constraints
 
 ### Performance Optimization
@@ -360,7 +362,7 @@ export function useAccounts() {
 
 ### Deployment and DevOps
 
-- Use `pnpm build && pa app push --solution-id <guid>` for deployment — `&&`, never `|`, or a failed build still pushes
+- Use `<pm> run build && pa app push --solution-id <guid>` for deployment — `&&`, never `|`, or a failed build still pushes
   the previous bundle
 - Implement proper environment management (dev, test, prod)
 - Use environment-specific configuration files
@@ -626,13 +628,13 @@ export function useAccounts() {
 - **Build failures**: Verify all dependencies with `npm audit` and check build configuration
 - **Authentication errors**: Re-authenticate Power Apps CLI with `pa auth logout` then `pa auth login`
 - **Connector unavailable**: Verify connector setup in Power Platform and connection status
-- **Performance issues**: Optimize bundle size with `pnpm build --report` and implement caching
+- **Performance issues**: Optimize bundle size (inspect the build's chunk report, split with lazy routes) and implement caching
 - **Environment mismatch**: Check the `environmentId` in `power.config.json` against the environment you mean
 - **App timeout errors**: Check build output and network connectivity
 
 ### Runtime Issues
 
-- **"App timed out" errors**: Verify `pnpm build` was executed and the deployment output is valid
+- **"App timed out" errors**: Verify `<pm> run build` was executed and the deployment output is valid
 - **Connector authentication prompts**: Ensure proper consent flow implementation
 - **Data loading failures**: Check network requests and connector permissions
 - **UI rendering issues**: Verify Fluent UI compatibility and responsive design implementation

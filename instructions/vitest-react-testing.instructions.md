@@ -144,6 +144,8 @@ So:
 - ❌ One giant test asserting the whole component — split into focused `it()` blocks per behavior.
 
 ## Running
-- `pnpm test` — watch mode during development
-- `pnpm test -- --run` — single run (CI)
-- `pnpm test -- --coverage` — coverage report
+Read `package.json` first and use the scripts it defines, with the lockfile's package manager
+(`docs/reference/package-managers.md`). Calling Vitest directly avoids the `--` argument quirks:
+- `<pm> run test` — the project's test script (usually watch mode)
+- `<pm-exec> vitest run` — single run (CI)
+- `<pm-exec> vitest run --coverage` — coverage report

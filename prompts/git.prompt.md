@@ -1,6 +1,8 @@
 ---
 description: Instructions for managing Git commits and branches in the project.
-agent: 'agent'
+# Runs as the delivery agent: the one agent that runs git, so branch and commit policy live in one
+# place (agents/delivery.agent.md). The built-in agent here gave /git a second, diverging policy.
+agent: 'delivery'
 ---
 # istruzioni per ogni modifica applicata
 
@@ -13,10 +15,18 @@ per ogni modifica applicata al codice sorgente bisogna creare un commit.
 il commit deve seguire lo standard per conventional commits. nel body del messaggio deve essere indicato il nome dell'istruzione di prompting ricevuta e una breve spiegazione del motivo
 ## branching e workflow
 
-1. controlla lo stato del repository (`git status`)
-   - se siamo sul branch principale (`main`) e non ci sono file modificati, crea un nuovo branch con la sintassi: `feature/{{feature-name}}`
-   - se siamo sul branch principale (`main`) e ci sono file modificati, chiedi cosa fare  
-   - se siamo su un branch `feature/*`, controlla la lista dei file modificati e chiedi cosa fare  
+Il modello è **Gitflow** (`instructions/gitflow.instructions.md`, `docs/WORKFLOW_AUTHORITY.md`): i
+branch `feature/*` partono da **`develop`**, mai da `main`; su `main` e `develop` non si committa mai
+direttamente. Se il progetto dichiara un modello diverso in `project-context.md`, vale quello.
+
+Stabilisci lo stato e scegli la mossa con la tabella **"Always establish state before proposing
+anything"** dell'agente `delivery` — è l'unica policy, non duplicarla qui. In sintesi:
+- `feature/<issue-id>-<descrizione-breve>` da **`develop`**, mai da `main` (da `main` solo `hotfix/*`).
+  **Serve l'ID dell'issue o del work item**: se manca, chiedilo — non inventarlo e non ometterlo.
+  Conferma il nome del branch con l'utente prima di crearlo.
+- su un branch protetto **con** modifiche non committate: `git stash` → crea il branch →
+  `git stash pop`. **Non committare prima**: il commit finirebbe sul branch protetto.
+- già su un `feature/*`: non crearne un altro, continua lì.
 
 
 ## conventional commits

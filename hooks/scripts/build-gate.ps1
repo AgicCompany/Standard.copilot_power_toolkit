@@ -198,56 +198,77 @@ $ConventionMode = if ($env:GATE_CONVENTIONS) { $env:GATE_CONVENTIONS } else { 'w
 $Conventions = @()
 
 if ($ConventionMode -ne 'off' -and (Test-Path -LiteralPath 'src')) {
-  $pkgRaw = ''
-  try { $pkgRaw = Get-Content -LiteralPath 'package.json' -Raw -ErrorAction Stop } catch { $pkgRaw = '' }
+  # Each file is judged against its NEAREST package.json, not the root one. In a repository whose
+  # app sits in a subfolder (src/frontend/ with its own package.json), the root package.json lists
+  # neither tailwindcss nor tailwind-merge, so both checks below used to fire on a correctly set-up
+  # app. node_modules is skipped. Fallback: the root package.json.
+  $repoRoot = (Get-Location).Path
+  $pkgCache = @{}
+  function Get-NearestPackageJson {
+    param([string]$FilePath)
+    $dir = [System.IO.Path]::GetDirectoryName($FilePath)
+    while ($dir -and $dir.Length -ge $repoRoot.Length) {
+      $candidate = [System.IO.Path]::Combine($dir, 'package.json')
+      if (Test-Path -LiteralPath $candidate) { return $candidate }
+      $dir = [System.IO.Path]::GetDirectoryName($dir)
+    }
+    return [System.IO.Path]::Combine($repoRoot, 'package.json')
+  }
+  function Test-DeclaresAny {
+    param([string]$FilePath, [string]$NamesPattern)
+    $pkgPath = Get-NearestPackageJson $FilePath
+    if (-not $pkgCache.ContainsKey($pkgPath)) {
+      $raw = ''
+      try { $raw = Get-Content -LiteralPath $pkgPath -Raw -ErrorAction Stop } catch { $raw = '' }
+      $pkgCache[$pkgPath] = $raw
+    }
+    return ($pkgCache[$pkgPath] -match ('"(' + $NamesPattern + ')"\s*:'))
+  }
 
-  $srcTsx = @()
+  $srcFiles = @()
   try {
-    $srcTsx = @(Get-ChildItem -Path 'src' -Recurse -File -ErrorAction Stop |
-      Where-Object { $_.Extension -eq '.tsx' -or $_.Extension -eq '.jsx' })
+    $srcFiles = @(Get-ChildItem -Path 'src' -Recurse -File -ErrorAction Stop |
+      Where-Object { $_.FullName -notmatch '[\\/]node_modules[\\/]' })
   } catch { }
+  $srcTsx = @($srcFiles | Where-Object { $_.Extension -eq '.tsx' -or $_.Extension -eq '.jsx' })
 
   # 1. Tailwind utility classes emitted into a project with no Tailwind installed.
   #    The suffix list is deliberately restrictive so bespoke class names (my-class, counter,
   #    text-wrapper) do not false-positive - only recognisable Tailwind values count.
-  if ($pkgRaw -and ($pkgRaw -notmatch '"tailwindcss"\s*:')) {
-    $twValue = '(?:\d+(?:\.\d+)?|px|auto|full|screen|none|xs|sm|md|lg|xl|2xl|3xl|primary|secondary|muted|accent|destructive|foreground|background|center|left|right|start|end|between|around|bold|semibold|medium|light)'
-    $twPattern = 'className\s*=[^>]{0,300}?(?:\b(?:flex|grid|hidden|truncate|relative|absolute|sticky)\b|\b(?:bg|text|border|rounded|px|py|pt|pb|pl|pr|mx|my|mt|mb|ml|mr|gap|items|justify|shadow|font|space|inset|w|h|p|m|z)-' + $twValue + '\b)'
-    $hits = @()
-    foreach ($f in $srcTsx) {
-      try {
-        if (Select-String -LiteralPath $f.FullName -Pattern $twPattern -Quiet -ErrorAction Stop) {
-          $hits += (Resolve-Path -LiteralPath $f.FullName -Relative)
-        }
-      } catch { }
-    }
-    if ($hits.Count -gt 0) {
-      $Conventions += [PSCustomObject]@{
-        check = 'tailwind_not_installed'
-        detail = "Tailwind utility classes found, but 'tailwindcss' is not in package.json. These classes resolve to nothing - the UI renders unstyled and no other check can detect it."
-        files = @($hits | Select-Object -First 10)
+  $twValue = '(?:\d+(?:\.\d+)?|px|auto|full|screen|none|xs|sm|md|lg|xl|2xl|3xl|primary|secondary|muted|accent|destructive|foreground|background|center|left|right|start|end|between|around|bold|semibold|medium|light)'
+  $twPattern = 'className\s*=[^>]{0,300}?(?:\b(?:flex|grid|hidden|truncate|relative|absolute|sticky)\b|\b(?:bg|text|border|rounded|px|py|pt|pb|pl|pr|mx|my|mt|mb|ml|mr|gap|items|justify|shadow|font|space|inset|w|h|p|m|z)-' + $twValue + '\b)'
+  $hits = @()
+  foreach ($f in $srcTsx) {
+    try {
+      if ((Select-String -LiteralPath $f.FullName -Pattern $twPattern -Quiet -ErrorAction Stop) -and
+          -not (Test-DeclaresAny $f.FullName 'tailwindcss')) {
+        $hits += (Resolve-Path -LiteralPath $f.FullName -Relative)
       }
+    } catch { }
+  }
+  if ($hits.Count -gt 0) {
+    $Conventions += [PSCustomObject]@{
+      check = 'tailwind_not_installed'
+      detail = "Tailwind utility classes found, but 'tailwindcss' is not in the package.json that owns these files. These classes resolve to nothing - the UI renders unstyled and no other check can detect it."
+      files = @($hits | Select-Object -First 10)
     }
   }
 
-  # 2. A local cn() helper while tailwind-merge is absent = a hand-rolled stub that concatenates
-  #    classes instead of resolving conflicting utilities.
-  if ($pkgRaw -and ($pkgRaw -notmatch '"tailwind-merge"\s*:')) {
-    $cnHits = @()
-    try {
-      foreach ($f in (Get-ChildItem -Path 'src' -Recurse -File -ErrorAction Stop |
-                      Where-Object { $_.Extension -eq '.ts' -or $_.Extension -eq '.tsx' })) {
-        if (Select-String -LiteralPath $f.FullName -Pattern 'export\s+(?:function|const)\s+cn\b' -Quiet -ErrorAction SilentlyContinue) {
-          $cnHits += (Resolve-Path -LiteralPath $f.FullName -Relative)
-        }
-      }
-    } catch { }
-    if ($cnHits.Count -gt 0) {
-      $Conventions += [PSCustomObject]@{
-        check = 'cn_without_tailwind_merge'
-        detail = "A local cn() helper exists but 'tailwind-merge' is not installed, so it concatenates classes instead of resolving conflicts. Install clsx + tailwind-merge."
-        files = $cnHits
-      }
+  # 2. A local cn() helper while nothing merges classes = a hand-rolled stub that concatenates
+  #    classes instead of resolving conflicting utilities. tailwind-merge (clsx + twMerge, older
+  #    shadcn) and shadcn's own `cn` package (newer shadcn: `export { cn } from "cn"`) both count.
+  $cnHits = @()
+  foreach ($f in @($srcFiles | Where-Object { $_.Extension -eq '.ts' -or $_.Extension -eq '.tsx' })) {
+    if ((Select-String -LiteralPath $f.FullName -Pattern 'export\s+(?:function|const)\s+cn\b' -Quiet -ErrorAction SilentlyContinue) -and
+        -not (Test-DeclaresAny $f.FullName 'tailwind-merge|cn')) {
+      $cnHits += (Resolve-Path -LiteralPath $f.FullName -Relative)
+    }
+  }
+  if ($cnHits.Count -gt 0) {
+    $Conventions += [PSCustomObject]@{
+      check = 'cn_without_tailwind_merge'
+      detail = "A local cn() helper exists but neither 'tailwind-merge' nor shadcn's 'cn' package is installed, so it concatenates classes instead of resolving conflicts. Install what the project's shadcn version uses (shadcn-ui.instructions.md, Composing)."
+      files = @($cnHits | Select-Object -First 10)
     }
   }
 

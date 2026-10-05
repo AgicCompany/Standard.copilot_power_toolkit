@@ -122,36 +122,54 @@ CONVENTION_MODE="${GATE_CONVENTIONS:-warn}"
 CONVENTIONS=()
 
 if [[ "$CONVENTION_MODE" != "off" && -d src ]]; then
-  PKG_RAW=$(cat package.json 2>/dev/null || echo "")
+  # Each file is judged against its NEAREST package.json, not the root one. In a repository whose
+  # app sits in a subfolder (src/frontend/ with its own package.json), the root package.json lists
+  # neither tailwindcss nor tailwind-merge, so both checks below used to fire on a correctly set-up
+  # app. Fallback: the root package.json.
+  nearest_pkg() {
+    local d
+    d="$(dirname "$1")"
+    while [[ "$d" != "." && "$d" != "/" && -n "$d" ]]; do
+      [[ -f "$d/package.json" ]] && { printf '%s' "$d/package.json"; return; }
+      d="$(dirname "$d")"
+    done
+    printf '%s' "package.json"
+  }
+  # Prints the files (from stdin) whose nearest package.json declares none of the given packages.
+  files_lacking() {
+    local f pkg
+    while IFS= read -r f; do
+      [[ -z "$f" ]] && continue
+      pkg="$(nearest_pkg "$f")"
+      grep -qE "\"($1)\"[[:space:]]*:" "$pkg" 2>/dev/null || printf '%s\n' "$f"
+    done
+  }
 
   # 1. Tailwind utility classes with no Tailwind installed. The suffix list is deliberately
   #    restrictive so bespoke class names (my-class, counter, text-wrapper) do not false-positive.
-  if ! printf '%s' "$PKG_RAW" | grep -qE '"tailwindcss"[[:space:]]*:'; then
-    TW_VALUE='([0-9]+|px|auto|full|screen|none|xs|sm|md|lg|xl|2xl|3xl|primary|secondary|muted|accent|destructive|foreground|background|center|left|right|start|end|between|around|bold|semibold|medium|light)'
-    TW_PATTERN="className[[:space:]]*=.*((flex|grid|hidden|truncate|relative|absolute|sticky)|(bg|text|border|rounded|px|py|pt|pb|pl|pr|mx|my|mt|mb|ml|mr|gap|items|justify|shadow|font|space|inset|w|h|p|m|z)-${TW_VALUE})"
-    TW_FILES=$(grep -rlE "$TW_PATTERN" --include='*.tsx' --include='*.jsx' src 2>/dev/null | head -10 || true)
-    if [[ -n "$TW_FILES" ]]; then
-      CONVENTIONS+=("tailwind_not_installed")
-      echo ""
-      echo "[WARN] tailwind_not_installed: Tailwind utility classes found, but 'tailwindcss' is not in"
-      echo "       package.json. These classes resolve to nothing - the UI renders unstyled and no"
-      echo "       other check can detect it."
-      printf '       %s\n' $TW_FILES
-    fi
+  TW_VALUE='([0-9]+|px|auto|full|screen|none|xs|sm|md|lg|xl|2xl|3xl|primary|secondary|muted|accent|destructive|foreground|background|center|left|right|start|end|between|around|bold|semibold|medium|light)'
+  TW_PATTERN="className[[:space:]]*=.*((flex|grid|hidden|truncate|relative|absolute|sticky)|(bg|text|border|rounded|px|py|pt|pb|pl|pr|mx|my|mt|mb|ml|mr|gap|items|justify|shadow|font|space|inset|w|h|p|m|z)-${TW_VALUE})"
+  TW_FILES=$(grep -rlE "$TW_PATTERN" --include='*.tsx' --include='*.jsx' --exclude-dir=node_modules src 2>/dev/null | files_lacking 'tailwindcss' | head -10 || true)
+  if [[ -n "$TW_FILES" ]]; then
+    CONVENTIONS+=("tailwind_not_installed")
+    echo ""
+    echo "[WARN] tailwind_not_installed: Tailwind utility classes found, but 'tailwindcss' is not in"
+    echo "       the package.json that owns these files. These classes resolve to nothing - the UI"
+    echo "       renders unstyled and no other check can detect it."
+    printf '       %s\n' $TW_FILES
   fi
 
-  # 2. A local cn() helper while tailwind-merge is absent = a hand-rolled stub that concatenates
-  #    classes instead of resolving conflicting utilities.
-  if ! printf '%s' "$PKG_RAW" | grep -qE '"tailwind-merge"[[:space:]]*:'; then
-    CN_FILES=$(grep -rlE 'export[[:space:]]+(function|const)[[:space:]]+cn\b' --include='*.ts' --include='*.tsx' src 2>/dev/null | head -10 || true)
-    if [[ -n "$CN_FILES" ]]; then
-      CONVENTIONS+=("cn_without_tailwind_merge")
-      echo ""
-      echo "[WARN] cn_without_tailwind_merge: A local cn() helper exists but 'tailwind-merge' is not"
-      echo "       installed, so it concatenates classes instead of resolving conflicts."
-      echo "       Install clsx + tailwind-merge."
-      printf '       %s\n' $CN_FILES
-    fi
+  # 2. A local cn() helper while nothing merges classes = a hand-rolled stub that concatenates
+  #    classes instead of resolving conflicting utilities. tailwind-merge (clsx + twMerge, older
+  #    shadcn) and shadcn's own `cn` package (newer shadcn: `export { cn } from "cn"`) both count.
+  CN_FILES=$(grep -rlE 'export[[:space:]]+(function|const)[[:space:]]+cn\b' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules src 2>/dev/null | files_lacking 'tailwind-merge|cn' | head -10 || true)
+  if [[ -n "$CN_FILES" ]]; then
+    CONVENTIONS+=("cn_without_tailwind_merge")
+    echo ""
+    echo "[WARN] cn_without_tailwind_merge: A local cn() helper exists but neither 'tailwind-merge' nor"
+    echo "       shadcn's 'cn' package is installed, so it concatenates classes instead of resolving"
+    echo "       conflicts. Install what the project's shadcn version uses (shadcn-ui.instructions.md, Composing)."
+    printf '       %s\n' $CN_FILES
   fi
 
   # 3. Components with no colocated test. src/components/ui/** is shadcn CLI output, not ours.

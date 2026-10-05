@@ -17,12 +17,12 @@ Linee guida per la gestione delle task list in file markdown per monitorare i pr
 - **Protocollo di completamento:**  
   1. Quando completi un **sotto-task**, segnalo immediatamente come completato cambiando `[ ]` in `[x]`.  
   2. Se **tutti** i sotto-task sotto un task principale sono ora `[x]`, segna anche il **task principale** come completato.  
-- **Protocollo di Esecuzione:**
-  1. Se il progetto è sotto controllo di versione (git), verifica lo stato del repository git
-  2. il working tree deve essere pulito: `git status --porcelain` non deve restituire nulla
-  3. Se ci sono file modificati e non committati, chiedere conferma all'utente su come procedere
-  4. Usa sempre le prassi indicate nel file `.github/instructions/git.instructions.md`
-  5. Fai un commit per ogni task
+- **Controllo di versione** (stessa policy del prompt inglese — mantenerli allineati):
+  1. Prima di iniziare, se il progetto è un repository git, verifica che il working tree sia pulito
+     (`git status --porcelain` non restituisce nulla). Se non lo è, chiedi all'utente come procedere.
+  2. Segui `instructions/git.instructions.md` e le regole Gitflow del progetto.
+  3. Quando un **task principale** è completato, proponi un messaggio di commit conventional. **Non
+     committare tu** — committa l'utente, o l'agente `delivery` (l'unico agente che esegue git).
 - Fermati dopo ogni sotto-task e attendi il via libera dell'utente.
 
 ## Manutenzione della Task List
@@ -46,9 +46,4 @@ Quando lavora con le task list, l'AI deve:
 3. Aggiungere i nuovi task scoperti.
 4. Mantenere la sezione "File Rilevanti" accurata e aggiornata.
 5. Prima di iniziare il lavoro, controllare quale sotto-task è il prossimo.
-6. Se il progetto è sotto controllo di versione (git), verifica lo stato del repository git
-7. il working tree deve essere pulito: `git status --porcelain` non deve restituire nulla
-8. Se ci sono file modificati e non committati, chiedere conferma all'utente su come procedere
-9. Usa sempre le prassi indicate nel file `.github/instructions/git.instructions.md`
-10. Fai un commit per ogni task
-11. Dopo l'implementazione di un sotto-task, aggiornare il file e poi fermarsi per l'approvazione dell'utente.
+6. Dopo l'implementazione di un sotto-task, aggiornare il file e poi fermarsi per l'approvazione dell'utente.

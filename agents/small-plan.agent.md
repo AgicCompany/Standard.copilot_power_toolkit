@@ -2,6 +2,8 @@
 name: small-plan
 description: 'Lightweight plan generator that produces a fixed 4-section plan (Overview, Requirements, Steps, Testing) for small, well-understood tasks. For deeper strategic/architectural analysis, use the plan agent instead.'
 tools:
+  # read: open the files a plan depends on; without it users attached every file by hand.
+  - read
   - search/codebase
   - web/fetch
   - findTestFiles
@@ -18,10 +20,8 @@ handoffs:
     agent: delivery
     prompt: 'Create the feature branch for the plan above, following Gitflow.'
     send: false
-  - label: Start With Tests
-    agent: tdd
-    prompt: 'Write failing tests for the plan outlined above, following the TDD cycle.'
-    send: false
+  # Deliberately the ONLY handoff: anything that edits files lives on delivery, and its prompt
+  # re-checks the branch. Handoff buttons are static suggestions, never a gate.
 ---
 
 # Small Plan Agent

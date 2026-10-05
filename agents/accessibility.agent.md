@@ -177,16 +177,19 @@ You are a world-class expert in web accessibility who translates standards into 
 
 ## Testing Commands
 
+`<pm-dlx>` is the project's one-off runner, from its lockfile — `npx`, `pnpm dlx`, `yarn dlx` on
+Yarn 2+, `npx` on Yarn 1 (`docs/reference/package-managers.md`).
+
 ```bash
 # Axe CLI against a local page
-pnpm dlx @axe-core/cli http://localhost:3000 --exit
+<pm-dlx> @axe-core/cli http://localhost:3000 --exit
 
 # Crawl with pa11y and generate HTML report
-pnpm dlx pa11y http://localhost:3000 --reporter html > a11y-report.html
+<pm-dlx> pa11y http://localhost:3000 --reporter html > a11y-report.html
 
 # Lighthouse CI (accessibility category). The package is @lhci/cli - the unscoped `lhci`
-# package on npm is an unrelated placeholder, and `npx lhci` would download and run it.
-pnpm dlx @lhci/cli autorun --only-categories=accessibility
+# package on npm is an unrelated placeholder, and `<pm-dlx> lhci` would download and run it.
+<pm-dlx> @lhci/cli autorun --only-categories=accessibility
 
 ```
 
@@ -271,6 +274,12 @@ Refs: WCAG 2.2 [2.4.*, 3.3.*, 2.5.*] as applicable.
 
 ## CI Example (GitHub Actions)
 
+Substitute the placeholders for the project's package manager before using this
+(`docs/reference/package-managers.md`). The `pnpm/action-setup` step is needed **only** for pnpm —
+GitHub runners do not ship it. It is pinned by commit SHA like every third-party action
+(`github-actions.instructions.md`); it reads the version from `package.json`'s `packageManager` field, or
+add `with: { version: 10 }`. Run `build` only if `package.json` defines it.
+
 ```yaml
 name: a11y-checks
 on: [push, pull_request]
@@ -279,19 +288,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # GitHub runners do not ship pnpm. action-setup reads the version from package.json's
-      # packageManager field; if the project has none, add `with: { version: 10 }`.
-      - uses: pnpm/action-setup@v4
+      # - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v4.4.0 - pnpm projects only
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run --if-present build
-      # in CI Example
-      - run: pnpm dlx serve -s dist -l 3000 &  # or `pnpm start &` for your app
-      - run: pnpm dlx wait-on http://localhost:3000
-      - run: pnpm dlx @axe-core/cli http://localhost:3000 --exit
+        with: { node-version: 20, cache: <npm|pnpm|yarn> }
+      - run: <pm-ci>
+      - run: <pm> run build
+      - run: <pm-dlx> serve -s dist -l 3000 &  # or `<pm> run start &` for your app
+      - run: <pm-dlx> wait-on http://localhost:3000
+      - run: <pm-dlx> @axe-core/cli http://localhost:3000 --exit
         continue-on-error: false
-      - run: pnpm dlx pa11y http://localhost:3000 --reporter ci
+      - run: <pm-dlx> pa11y http://localhost:3000 --reporter ci
 ```
 
 ## Prompt Starters

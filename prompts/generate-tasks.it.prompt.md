@@ -48,8 +48,9 @@ La task list generata _deve_ seguire questa struttura:
 
 - I test unitari dovrebbero tipicamente essere posizionati accanto ai file di codice che stanno testando (es., `my-component.tsx` e `my-component.test.tsx` nella stessa directory).
 - Leggere `package.json` prima di scrivere qualsiasi comando di test, controllando sia gli script sia le dipendenze:
-  - esiste uno script `test` → usarlo (`pnpm test`);
-  - nessuno script, ma `vitest` è tra le dipendenze → `pnpm vitest run [percorso/opzionale/del/file/test]`;
+  - esiste uno script `test` → usarlo (`<pm> run test`);
+  - nessuno script, ma `vitest` è tra le dipendenze → `<pm-exec> vitest run [percorso/opzionale/del/file/test]`;
+  - `<pm>` / `<pm-exec>`: il package manager del lockfile (`docs/reference/package-managers.md`);
   - nessuno dei due → il progetto non ha ancora un test runner. Aggiungere un task per configurare
     Vitest + React Testing Library (lo standard di questa baseline, vedi `vitest-react-testing.instructions.md`)
     prima di qualsiasi task che dipenda dai test. Non prescrivere un comando di test che non può

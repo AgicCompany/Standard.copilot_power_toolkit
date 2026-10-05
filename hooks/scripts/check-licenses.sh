@@ -223,7 +223,7 @@ get_license() {
         if command -v jq &>/dev/null; then
           license=$(jq -r '.license // "UNKNOWN"' "node_modules/$pkg/package.json" 2>/dev/null || echo "UNKNOWN")
         else
-          license=$(grep -oE '"license"\s*:\s*"[^"]*"' "node_modules/$pkg/package.json" 2>/dev/null | head -1 | sed 's/.*"license"\s*:\s*"//;s/"//' || echo "UNKNOWN")
+          license=$(grep -oE '"license"[[:space:]]*:[[:space:]]*"[^"]*"' "node_modules/$pkg/package.json" 2>/dev/null | head -1 | sed 's/.*"license"[[:space:]]*:[[:space:]]*"//;s/"//' || echo "UNKNOWN")
         fi
       fi
       # Fallback: npm view

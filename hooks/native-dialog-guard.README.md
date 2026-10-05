@@ -46,7 +46,7 @@ before deleting" silently becomes "never delete". Nothing throws, and build, lin
 — it only misbehaves in the iframe, never on localhost.
 
 It then names the fix: read `ui` from `.github/.baseline-manifest.json` and install that library's
-dialog (`shadcn` → `pnpm dlx shadcn@latest add alert-dialog`).
+dialog (`shadcn` → `<pm-dlx> shadcn@latest add alert-dialog`, with the project's package manager).
 
 **Not blocked:** the native `<dialog>` *element*. Unlike `confirm()`, it is unaffected by
 `allow-modals` and genuinely works in the iframe. Hand-rolling one instead of installing the

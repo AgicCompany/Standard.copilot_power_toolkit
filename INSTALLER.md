@@ -24,7 +24,7 @@ remove.
 | `apply-baseline.ps1` | Meaning | Default |
 |---|---|---|
 | `-TargetProjectPath <dir>` | Project to install into | required. For `npx`, the current directory is the natural default |
-| `-Profile <name>` | `react-vite`, `power-apps-code-app`, `baseline-authoring`, `full` | **remembered** from the target's receipt; else `power-apps-code-app` |
+| `-Profile <name>` | `react-vite`, `power-apps-code-app`, `power-apps-canvas-migration`, `baseline-authoring`, `full` | **remembered** from the target's receipt; else `power-apps-code-app` |
 | `-Ui shadcn\|fluent` | UI library variant | **remembered**; else `shadcn` |
 | `-Force` | Overwrite existing **baseline-owned** files | off |
 | `-Prune` | Remove baseline-owned files the profile no longer includes | off |

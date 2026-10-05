@@ -221,6 +221,23 @@ $configuredServers = @()
 if (Test-Path -LiteralPath $mcpConfigPath) {
   $mcpConfig = Get-Content -LiteralPath $mcpConfigPath -Raw | ConvertFrom-Json
   $configuredServers = $mcpConfig.servers.PSObject.Properties.Name
+
+  # Every npx-launched server starts automatically on every developer's machine. Without -y, npx asks
+  # "Ok to proceed? (y)" on stdin - which is the MCP connection, so the server hangs on first launch
+  # (playwright shipped this way). Without an exact version, the vendor decides what runs.
+  foreach ($srv in $mcpConfig.servers.PSObject.Properties) {
+    $def = $srv.Value
+    if (-not ($def.PSObject.Properties.Name -contains 'command')) { continue }
+    if ($def.command -notmatch '^npx(\.cmd)?$') { continue }
+    $srvArgs = @($def.args)
+    if (-not ($srvArgs -contains '-y' -or $srvArgs -contains '--yes')) {
+      $errors += ".vscode/mcp.json: server '$($srv.Name)' runs npx without -y - npx prompts on the MCP stdio channel and the server hangs on first launch"
+    }
+    $pkg = @($srvArgs | Where-Object { $_ -notlike '-*' }) | Select-Object -First 1
+    if (-not $pkg -or $pkg -notmatch '^(@[^/@]+/)?[^@/]+@\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$') {
+      $errors += ".vscode/mcp.json: server '$($srv.Name)' package '$pkg' is not pinned to an exact version (see docs/mcp-servers.md)"
+    }
+  }
 }
 # Bare (unprefixed) built-in tool names/aliases that are genuinely fine as-is — either a bare
 # category name itself, or one with no confirmed namespaced form.
@@ -363,7 +380,7 @@ else {
     }
 
     # Which agents does a given profile actually ship? Resolve common + the profile's own includes,
-    # following 'extends' so power-apps-code-app inherits react-vite's agents.
+    # following the whole 'extends' chain (power-apps-canvas-migration -> power-apps-code-app -> react-vite).
     function Get-ProfileAgents {
       param([string]$ProfileName)
       $pats = @($profileManifest.common)
@@ -375,7 +392,7 @@ else {
         if (-not $def) { break }
         $pats += @($def.include)
         # Under StrictMode, reading a property that isn't declared THROWS rather than returning null -
-        # only power-apps-code-app has 'extends', so this must be probed, not accessed.
+        # not every profile has 'extends', so this must be probed, not accessed.
         $cur = if ($def.PSObject.Properties.Name -contains 'extends') { $def.extends } else { $null }
       }
       $out = @{}
@@ -406,6 +423,10 @@ else {
 
       foreach ($m in [regex]::Matches($fm, "(?m)^\s+-?\s*agent:\s*'?`"?([^'`"\r\n]+)")) {
         $target = $m.Groups[1].Value.Trim()
+
+        # VS Code's built-in Agent mode is a documented handoff target ("Implement Plan" -> agent: agent
+        # in the custom-agents docs' planning example). No file backs it, and every profile has it.
+        if ($target -eq 'agent') { continue }
 
         if (-not $agentNames.ContainsKey($target)) {
           $errors += "agents/$($file.Name): handoff targets '$target', which is not the name of any agent — the button renders and does nothing, silently."

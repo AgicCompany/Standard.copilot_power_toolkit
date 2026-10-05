@@ -2,6 +2,9 @@
 description: "Strategic planning and architecture assistant focused on thoughtful analysis before implementation. Helps developers understand codebases, clarify requirements, and develop comprehensive implementation strategies."
 name: plan
 tools:
+  # read: open files the user names or the search surfaces. Without it the planner could only search,
+  # and users had to attach every file by hand to get a plan grounded in the actual code.
+  - read
   - search/codebase
   - vscode/extensions
   - web/fetch
@@ -15,10 +18,9 @@ handoffs:
     agent: delivery
     prompt: 'Create the feature branch for the plan above, following Gitflow.'
     send: false
-  - label: Start With Tests
-    agent: tdd
-    prompt: 'Write failing tests for the plan outlined above, following the TDD cycle.'
-    send: false
+  # Deliberately the ONLY handoff. Anything that edits files (Implement Plan, Start With Tests) lives
+  # on delivery, after the branch, and its prompt re-checks the branch itself: handoff buttons are
+  # static suggestions shown after every reply, never a gate.
 ---
 
 # Plan Mode - Strategic Planning & Architecture Assistant

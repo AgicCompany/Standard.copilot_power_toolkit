@@ -48,8 +48,9 @@ The generated task list _must_ follow this structure:
 
 - Unit tests should typically be placed alongside the code files they are testing (e.g., `my-component.tsx` and `my-component.test.tsx` in the same directory).
 - Read `package.json` before writing any test command, and check both its scripts and its dependencies:
-  - a `test` script exists → use it (`pnpm test`);
-  - no script, but `vitest` is a dependency → `pnpm vitest run [optional/path/to/test/file]`;
+  - a `test` script exists → use it (`<pm> run test`);
+  - no script, but `vitest` is a dependency → `<pm-exec> vitest run [optional/path/to/test/file]`;
+  - `<pm>` / `<pm-exec>`: the lockfile's package manager (`docs/reference/package-managers.md`);
   - neither → the project has no test runner yet. Add a task to set up Vitest + React Testing Library
     (this baseline's standard, see `vitest-react-testing.instructions.md`) ahead of any task that relies
     on tests. Do not prescribe a test command that cannot run — the default scaffold defines no `test`

@@ -70,9 +70,14 @@ export function useAccounts(filter: AccountFilter) {
   `lock-semantics-expert` skill before adding optimistic writes to shared records.
 - **Surface mutation errors in the UI.** A failed write that only logs to console is a data-loss bug.
 
-## Dataverse specifics — only if this project has `src/generated/services/`
+## Dataverse specifics — only if this project has generated services
 
-**Check before applying any of this.** This file ships to plain React projects too, where there is no
+**Check before applying any of this:** does the file you are editing belong to a Code App — is there
+a `power.config.json` at or above it, with a `src/generated/services/` folder next to that config?
+Check from the file, not from the repository root: in a multi-host or template-derived repo the app
+sits in a subfolder (`src/frontend/`), so a root-only check skips these rules exactly where they
+apply, while a repository-wide search would apply them to a backend or another app that merely
+shares the repo. This file ships to plain React projects too, where there is no
 Dataverse, no generated services and no `src/generated/`. Offering them as an option there invents a
 data source that does not exist — confirmed live: asked to load a list from an API in a bare Vite
 project, a model's first clarifying question offered *"a Dataverse generated service

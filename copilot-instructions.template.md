@@ -16,7 +16,8 @@
 
 ## Stack
 - **React + TypeScript + Vite.** *(Confirm versions in `project-context.md`.)*
-- **Package manager: pnpm.** Never suggest npm/yarn commands for this project.
+- **Package manager: the one the lockfile shows**, recorded in `project-context.md`. Never suggest
+  another. Baseline commands write `<pm>`, `<pm-dlx>`…: `docs/reference/package-managers.md`.
 - Styling **Tailwind v4 + shadcn/ui**, server state **TanStack Query**, forms **react-hook-form +
   Zod**, tests **Vitest + RTL** and **Playwright** for e2e.
 - These are settled decisions. Don't propose alternatives unprompted; **if asked to use something
@@ -65,6 +66,5 @@
 
 ## Where things are
 - `project-context.md` — this project's stack, integrations, environments, constraints
-- `instructions/` — auto-applied by file pattern | `prompts/` — slash commands | `agents/` — picker
-- `docs/reference/` — long catalogues (a11y, performance), read on demand
-- `GOVERNANCE_MATRIX.md` — what baseline assets are active here
+- `instructions/` auto-applied by file pattern | `prompts/` slash commands | `agents/` picker
+- `docs/reference/` long catalogues, read on demand | `GOVERNANCE_MATRIX.md` active baseline assets

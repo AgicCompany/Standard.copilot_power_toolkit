@@ -90,7 +90,7 @@ Get-Content logs\copilot\event-probe.log | ForEach-Object { ($_ -split '  ')[0..
 |---|---|
 | `agentStop` or `Stop` entries | **Best outcome.** Move `build-gate` there — it runs per turn, better than session end. Needs debouncing so a long typecheck doesn't run on every message. |
 | `SessionEnd` (PascalCase) but not `sessionEnd` | Event naming is dialect-specific. Register both casings in every hook. |
-| `sessionEnd` only after a **full quit** | Not broken — just rarer than assumed. Keep it, and keep `pnpm gate` for mid-session use. |
+| `sessionEnd` only after a **full quit** | Not broken — just rarer than assumed. Keep it, and keep a manual gate run for mid-session use. |
 | Nothing at all | The original conclusion holds, and the manual gate is the right answer — now actually established rather than assumed. |
 
 **Delete both probe files afterwards.** The log records raw payloads.

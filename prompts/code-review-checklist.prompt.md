@@ -229,7 +229,7 @@ This checklist ensures thorough and consistent code reviews across all developme
 
 ### Package Management
 
-- [ ] Only pnpm is used for package operations
+- [ ] Only the project's package manager (the one its lockfile shows) is used — no second lockfile
 - [ ] Dependencies are properly declared in package.json
 - [ ] Lock files are updated appropriately
 - [ ] Unused dependencies are removed

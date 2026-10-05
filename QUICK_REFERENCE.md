@@ -40,7 +40,18 @@ surfaces the conventions already sitting in context.
 **So:**
 
 1. **Anything beyond a one-line change: start with `plan` or `small-plan`**, then follow the handoff
-   buttons (`tdd`, then `review` -> `checklist`).
+   buttons: *Create Feature Branch* (`delivery`), then *Implement Plan* or *Start With Tests* (`tdd`),
+   then `review` -> `checklist`.
+   **Plan with a strong model, execute with a cheaper one.** Pick the strong model in the picker for
+   the plan; press *Create Feature Branch* (the `delivery` agent creates or confirms the branch); then
+   switch to a cheaper model before pressing *Implement Plan* or *Start With Tests*. Both live only on
+   `delivery`, and both check the current branch before their first edit — buttons show after every
+   reply, so that check, not the button's position, is what stops work landing on `main`/`develop`.
+   Measured on a live Code App project: plans written this way and executed by a low-cost model
+   produced PRs with 0-1 low-severity review findings; when the cheap model stopped, every stop traced
+   to a gap in the plan, not to execution. A small task with an exact, self-contained prompt (files,
+   expected behaviour, test cases, commands to run) needed no plan step at all. Keep the strong model
+   for security-sensitive code and for anything the plan leaves open.
 2. **Never treat `review` alone as sign-off.** Run its `checklist` handoff. Confirmed failure: on the
    same file, `review` praised a hand-rolled `cn()` helper as "standard, fast path for class merging"
    while `checklist` correctly flagged it as a convention violation.

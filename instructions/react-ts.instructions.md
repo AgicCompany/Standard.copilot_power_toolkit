@@ -75,7 +75,7 @@ Declaring an omission is what you do when something is genuinely **blocked**, no
 satisfy the rule: **scaling the task down is the user's call, not yours.**
 
 A real blocker is something you **attempted** and could not complete. It sounds like: *"no colocated
-test — `pnpm add -D vitest @testing-library/react` failed, output below."* When that happens: quote
+test — `<pm-add> -D vitest @testing-library/react` failed, output below."* When that happens: quote
 the command and error, finish every item that doesn't depend on it, and name exactly which of these
 are unmet. "The project has no test runner so I didn't add one unasked" is not a blocker — it
 describes a prerequisite you never checked.
@@ -158,8 +158,12 @@ src/
 names — and generates its cross-feature zones by reading `src/features/`, so a new feature is covered
 the moment it exists.
 
-Install `eslint-plugin-import-x` and `eslint-plugin-check-file` as dev dependencies with the package
-manager the lockfile shows. Then, if `src/` sits at the repository root:
+Install `eslint-plugin-import-x`, `eslint-plugin-check-file` and `eslint-import-resolver-typescript`
+as dev dependencies with the package manager the lockfile shows. The resolver is not optional:
+without it `@/` imports never resolve to files, no zone matches, and lint passes while enforcing
+nothing — so the config now refuses to load without it. In a Code App (an app folder with a
+`power.config.json`) the same config also restricts `src/generated/`: only a feature's `api/` folder,
+`src/lib` and test files may import it — everything else uses the `api/` hook. Then, if `src/` sits at the repository root:
 
 ```js
 import boundaries from './.github/eslint/import-boundaries.mjs';
