@@ -349,15 +349,15 @@ fi
 # script here, so the gate goes straight to the conventions; each fixture carries a decoy cn() inside
 # node_modules, which must be ignored.
 echo "--- build-gate: conventions judged against the owning package.json ---"
-expect_gate_conventions() {  # label, app package.json, lib/utils.ts content, expected warnings ("none" or space list)
+expect_gate_conventions() {  # label, app package.json, lib/utils.ts content, expected warnings ("none" or space list), [app folder, default src/frontend]
   CASES=$((CASES + 1))
-  local dir="$WORK/gate-$CASES" out got
-  mkdir -p "$dir/src/frontend/src/lib" "$dir/src/frontend/node_modules/decoy"
+  local dir="$WORK/gate-$CASES" app="${5:-src/frontend}" out got
+  mkdir -p "$dir/$app/src/lib" "$dir/$app/node_modules/decoy"
   printf '{"name":"root"}' > "$dir/package.json"
-  printf '%s' "$2" > "$dir/src/frontend/package.json"
-  printf '%s\n' 'export const A = () => <div className="flex gap-2 bg-primary" />;' > "$dir/src/frontend/src/a.tsx"
-  printf '%s\n' "$3" > "$dir/src/frontend/src/lib/utils.ts"
-  printf '%s\n' 'export function cn() {}' > "$dir/src/frontend/node_modules/decoy/index.ts"
+  printf '%s' "$2" > "$dir/$app/package.json"
+  printf '%s\n' 'export const A = () => <div className="flex gap-2 bg-primary" />;' > "$dir/$app/src/a.tsx"
+  printf '%s\n' "$3" > "$dir/$app/src/lib/utils.ts"
+  printf '%s\n' 'export function cn() {}' > "$dir/$app/node_modules/decoy/index.ts"
   out="$(cd "$dir" && GATE_MIN_INTERVAL_SEC=0 GATE_RUN_LINT=false bash "$SCRIPTS/build-gate.sh" 2>&1)"
   got="$(printf '%s\n' "$out" | grep -oE '\[WARN\] (tailwind_not_installed|cn_without_tailwind_merge)' | sed 's/\[WARN\] //' | sort | tr '\n' ' ' | sed 's/ $//')"
   [[ -z "$got" ]] && got="none"
@@ -374,6 +374,14 @@ expect_gate_conventions "nested app, shadcn cn package" \
   '{"dependencies":{"tailwindcss":"4","cn":"0.4"}}' 'export { cn } from "cn";' "none"
 expect_gate_conventions "nested app, nothing installed" \
   '{"dependencies":{}}' 'export function cn(...a) { return a.join(" "); }' "cn_without_tailwind_merge tailwind_not_installed"
+# Outside ./src entirely (a monorepo layout): the scan used to start at ./src and saw nothing here.
+expect_gate_conventions "apps/web app, nothing installed" \
+  '{"dependencies":{}}' 'export function cn(...a) { return a.join(" "); }' "cn_without_tailwind_merge tailwind_not_installed" "apps/web"
+expect_gate_conventions "apps/web app, all installed" \
+  '{"dependencies":{"tailwindcss":"4","tailwind-merge":"3"}}' 'export function cn(...a) { return a.join(" "); }' "none" "apps/web"
+# `cn` followed by its parameter list, `cnx` must not count: the POSIX boundary replacing \b.
+expect_gate_conventions "cnx() is not cn()" \
+  '{"dependencies":{"tailwindcss":"4"}}' 'export function cnx(...a) { return a.join(" "); }' "none"
 
 # The smoke pass above ran every hook inside a git repo. Whatever they logged must be invisible to
 # git: logs/ is not in a project's .gitignore by default, so the hooks make logs/copilot ignore itself.

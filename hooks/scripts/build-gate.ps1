@@ -197,7 +197,7 @@ if ($RunLint -eq 'true' -and (Get-Command node -ErrorAction SilentlyContinue)) {
 $ConventionMode = if ($env:GATE_CONVENTIONS) { $env:GATE_CONVENTIONS } else { 'warn' }
 $Conventions = @()
 
-if ($ConventionMode -ne 'off' -and (Test-Path -LiteralPath 'src')) {
+if ($ConventionMode -ne 'off') {
   # Each file is judged against its NEAREST package.json, not the root one. In a repository whose
   # app sits in a subfolder (src/frontend/ with its own package.json), the root package.json lists
   # neither tailwindcss nor tailwind-merge, so both checks below used to fire on a correctly set-up
@@ -225,11 +225,30 @@ if ($ConventionMode -ne 'off' -and (Test-Path -LiteralPath 'src')) {
     return ($pkgCache[$pkgPath] -match ('"(' + $NamesPattern + ')"\s*:'))
   }
 
-  $srcFiles = @()
-  try {
-    $srcFiles = @(Get-ChildItem -Path 'src' -Recurse -File -ErrorAction Stop |
-      Where-Object { $_.FullName -notmatch '[\\/]node_modules[\\/]' })
-  } catch { }
+  # The whole repository, not just .\src: apps live at src/frontend/, apps/web/src/ and other layouts,
+  # and ownership is settled per file by Get-NearestPackageJson. A pruning walk, not
+  # Get-ChildItem -Recurse: that enumerates all of node_modules before any filter can drop it.
+  $skipDirs = @('node_modules', '.git', 'dist', 'build', 'coverage')
+  $srcFiles = New-Object System.Collections.Generic.List[System.IO.FileInfo]
+  $pending = New-Object System.Collections.Generic.Stack[string]
+  $pending.Push($repoRoot)
+  while ($pending.Count -gt 0) {
+    $dir = $pending.Pop()
+    try {
+      foreach ($sub in [System.IO.Directory]::EnumerateDirectories($dir)) {
+        if ($skipDirs -contains [System.IO.Path]::GetFileName($sub)) { continue }
+        # Never follow a symlink or junction: one pointing at node_modules dodges the exclusions,
+        # one pointing outside the repository widens the scan, and one pointing at an ancestor loops
+        # until the hook's timeout. grep -r on the bash side does not follow them either.
+        if (([System.IO.File]::GetAttributes($sub) -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) { continue }
+        $pending.Push($sub)
+      }
+      foreach ($f in [System.IO.Directory]::EnumerateFiles($dir)) {
+        $ext = [System.IO.Path]::GetExtension($f)
+        if ($ext -eq '.ts' -or $ext -eq '.tsx' -or $ext -eq '.jsx') { $srcFiles.Add((New-Object System.IO.FileInfo $f)) }
+      }
+    } catch { }
+  }
   $srcTsx = @($srcFiles | Where-Object { $_.Extension -eq '.tsx' -or $_.Extension -eq '.jsx' })
 
   # 1. Tailwind utility classes emitted into a project with no Tailwind installed.

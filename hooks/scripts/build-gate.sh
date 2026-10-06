@@ -121,11 +121,14 @@ fi
 CONVENTION_MODE="${GATE_CONVENTIONS:-warn}"
 CONVENTIONS=()
 
-if [[ "$CONVENTION_MODE" != "off" && -d src ]]; then
+if [[ "$CONVENTION_MODE" != "off" ]]; then
   # Each file is judged against its NEAREST package.json, not the root one. In a repository whose
   # app sits in a subfolder (src/frontend/ with its own package.json), the root package.json lists
   # neither tailwindcss nor tailwind-merge, so both checks below used to fire on a correctly set-up
   # app. Fallback: the root package.json.
+  # The scan covers the whole repository, not just ./src: apps live at src/frontend/, apps/web/src/
+  # and other layouts, and ownership is settled per file by nearest_pkg anyway.
+  SCAN_EXCLUDES=(--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=build --exclude-dir=coverage)
   nearest_pkg() {
     local d
     d="$(dirname "$1")"
@@ -149,7 +152,7 @@ if [[ "$CONVENTION_MODE" != "off" && -d src ]]; then
   #    restrictive so bespoke class names (my-class, counter, text-wrapper) do not false-positive.
   TW_VALUE='([0-9]+|px|auto|full|screen|none|xs|sm|md|lg|xl|2xl|3xl|primary|secondary|muted|accent|destructive|foreground|background|center|left|right|start|end|between|around|bold|semibold|medium|light)'
   TW_PATTERN="className[[:space:]]*=.*((flex|grid|hidden|truncate|relative|absolute|sticky)|(bg|text|border|rounded|px|py|pt|pb|pl|pr|mx|my|mt|mb|ml|mr|gap|items|justify|shadow|font|space|inset|w|h|p|m|z)-${TW_VALUE})"
-  TW_FILES=$(grep -rlE "$TW_PATTERN" --include='*.tsx' --include='*.jsx' --exclude-dir=node_modules src 2>/dev/null | files_lacking 'tailwindcss' | head -10 || true)
+  TW_FILES=$(grep -rlE "$TW_PATTERN" --include='*.tsx' --include='*.jsx' "${SCAN_EXCLUDES[@]}" . 2>/dev/null | files_lacking 'tailwindcss' | head -10 || true)
   if [[ -n "$TW_FILES" ]]; then
     CONVENTIONS+=("tailwind_not_installed")
     echo ""
@@ -162,7 +165,8 @@ if [[ "$CONVENTION_MODE" != "off" && -d src ]]; then
   # 2. A local cn() helper while nothing merges classes = a hand-rolled stub that concatenates
   #    classes instead of resolving conflicting utilities. tailwind-merge (clsx + twMerge, older
   #    shadcn) and shadcn's own `cn` package (newer shadcn: `export { cn } from "cn"`) both count.
-  CN_FILES=$(grep -rlE 'export[[:space:]]+(function|const)[[:space:]]+cn\b' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules src 2>/dev/null | files_lacking 'tailwind-merge|cn' | head -10 || true)
+  # ([^[:alnum:]_]|$), not \b: \b is a GNU extension to ERE, not POSIX.
+  CN_FILES=$(grep -rlE 'export[[:space:]]+(function|const)[[:space:]]+cn([^[:alnum:]_]|$)' --include='*.ts' --include='*.tsx' "${SCAN_EXCLUDES[@]}" . 2>/dev/null | files_lacking 'tailwind-merge|cn' | head -10 || true)
   if [[ -n "$CN_FILES" ]]; then
     CONVENTIONS+=("cn_without_tailwind_merge")
     echo ""

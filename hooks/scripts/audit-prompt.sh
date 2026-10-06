@@ -127,7 +127,7 @@ check_pattern "wipe[[:space:]]+(all|entire|every)" "system_destruction" "0.9" "M
 
 # Prompt injection signals
 check_pattern "ignore[[:space:]]+(previous|above|all)[[:space:]]+(instructions?|rules?|prompts?)" "prompt_injection" "0.9" "Instruction override"
-check_pattern "you[[:space:]]+are[[:space:]]+now[[:space:]]+(a|an)[[:space:]]+(assistant|ai|bot|system|expert|language[[:space:]]+model)\b" "prompt_injection" "0.7" "Role reassignment"
+check_pattern "you[[:space:]]+are[[:space:]]+now[[:space:]]+(a|an)[[:space:]]+(assistant|ai|bot|system|expert|language[[:space:]]+model)([^[:alnum:]_]|$)" "prompt_injection" "0.7" "Role reassignment"
 check_pattern "(^|\n)[[:space:]]*system[[:space:]]*:[[:space:]]*you[[:space:]]+are" "prompt_injection" "0.6" "System prompt injection"
 
 # Credential exposure signals

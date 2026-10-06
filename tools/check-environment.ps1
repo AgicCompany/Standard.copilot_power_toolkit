@@ -58,6 +58,10 @@ $checks = @(
      Install = 'npm install -g pnpm     (or: corepack enable)'
      Why = 'optional - only for a project whose lockfile is pnpm-lock.yaml. The baseline names no package manager: the lockfile decides (docs/reference/package-managers.md), and npm ships with Node.' }
 
+  @{ Name = 'Yarn'; Cmd = 'yarn'; Required = $false; Profiles = @('react-vite', 'power-apps-code-app', 'power-apps-canvas-migration', 'full')
+     Install = 'corepack enable     (Yarn 2+ reads its version from package.json "packageManager")   or: npm install -g yarn   (Yarn 1)'
+     Why = 'optional - only for a project whose lockfile is yarn.lock. Yarn 1 and Yarn 2+ take different commands; docs/reference/package-managers.md says how to tell them apart.' }
+
   @{ Name = 'Power Apps CLI (pa)'; Cmd = 'pa'; Required = $true; Profiles = @('power-apps-code-app', 'power-apps-canvas-migration', 'full')
      Install = 'npm install --global @microsoft/power-apps-cli'
      Why = 'pa app init / add data-source / push. Nothing in the Code App workflow works without it. This REPLACES the legacy pac code commands, which cannot add Dataverse actions or functions at all - a project needing a Custom API must be on pa.' }
