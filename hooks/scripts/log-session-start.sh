@@ -27,8 +27,13 @@ fi
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 CWD=$(pwd)
 
-# Log session start (use jq for proper JSON encoding)
-jq -Rn --arg timestamp "$TIMESTAMP" --arg cwd "$CWD" '{"timestamp":$timestamp,"event":"sessionStart","cwd":$cwd}' >> logs/copilot/session.log
+# Log session start. jq encodes cwd safely; without it, write a reduced line rather than fail (a
+# missing jq exited 127 under `set -e`). cwd can hold quotes or backslashes, so it is left out.
+if command -v jq >/dev/null 2>&1; then
+  jq -Rn --arg timestamp "$TIMESTAMP" --arg cwd "$CWD" '{"timestamp":$timestamp,"event":"sessionStart","cwd":$cwd}' >> logs/copilot/session.log
+else
+  printf '{"timestamp":"%s","event":"sessionStart","log":"reduced-no-jq"}\n' "$TIMESTAMP" >> logs/copilot/session.log
+fi
 
 # stdout is PARSED as JSON on sessionStart. A status line here silently suppresses additionalContext
 # from EVERY other sessionStart hook. The real record goes to the log file above.

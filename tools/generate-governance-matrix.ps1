@@ -39,13 +39,18 @@ function Get-ProfilesFor {
   foreach ($name in $manifest.profiles.PSObject.Properties.Name) {
     $inc = @($manifest.profiles.$name.include)
     if ($inc.Count -eq 1 -and $inc[0] -eq '**') { continue }
-    foreach ($pat in $inc) {
+    # A profile ships its own includes and those of every profile it extends, at any depth.
+    $pats = @(); $seen = @{}; $cur = $name
+    while ($cur -and -not $seen.ContainsKey($cur)) {
+      $seen[$cur] = $true
+      $def = $manifest.profiles.$cur
+      if (-not $def) { break }
+      $pats += @($def.include)
+      $cur = if ($def.PSObject.Properties.Name -contains 'extends') { $def.extends } else { $null }
+    }
+    foreach ($pat in $pats) {
       if ($Rel -match (Convert-GlobToRegex $pat)) { $hit += $name; break }
     }
-  }
-  # power-apps-code-app extends react-vite, so react-vite membership implies both.
-  if ($hit -contains 'react-vite' -and $hit -notcontains 'power-apps-code-app') {
-    $hit += 'power-apps-code-app'
   }
   if ($hit.Count -eq 0) { return @('full only') }
   return ($hit | Sort-Object -Unique)

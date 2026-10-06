@@ -9,8 +9,10 @@
 // judgement belongs in a check, not in prose — this is that check. Adapted from
 // https://github.com/alan2207/bulletproof-react (docs/project-structure.md).
 //
-// REQUIRES:  eslint-plugin-import-x and eslint-plugin-check-file as dev dependencies, installed with
-//            the package manager the project's lockfile shows.
+// REQUIRES:  eslint-plugin-import-x, eslint-plugin-check-file and eslint-import-resolver-typescript
+//            as dev dependencies, installed with the package manager the project's lockfile shows.
+//            The resolver is not optional: without it `@/` imports never resolve and no boundary is
+//            enforced (see boundaries-core.mjs). It reads the repository root's tsconfig.json.
 //
 // THIS FILE is for an app whose src/ sits at the repository root, with the plugins installed there.
 // Wire it up in the project's own eslint.config.js:
@@ -31,6 +33,7 @@ import { fileURLToPath } from 'node:url';
 
 import importX from 'eslint-plugin-import-x';
 import checkFile from 'eslint-plugin-check-file';
+import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 
 import { buildConfig, nestedFeaturesDir } from './boundaries-core.mjs';
 
@@ -53,7 +56,7 @@ if (!fs.existsSync(path.join(REPO_ROOT, 'src', 'features'))) {
   }
 }
 
-const root = buildConfig(REPO_ROOT, { importX, checkFile });
+const root = buildConfig(REPO_ROOT, { importX, checkFile, createTypeScriptImportResolver });
 export const importBoundaries = root.importBoundaries;
 export const fileNaming = root.fileNaming;
 export const generatedIgnores = root.generatedIgnores;

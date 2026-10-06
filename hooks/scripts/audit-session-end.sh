@@ -35,12 +35,20 @@ if [[ -f "$LOG_FILE" ]]; then
   fi
 fi
 
-jq -Rn \
-  --arg timestamp "$TIMESTAMP" \
-  --argjson total "$TOTAL" \
-  --argjson threats "$THREATS" \
-  '{"timestamp":$timestamp,"event":"session_end","total_events":$total,"threats_detected":$threats}' \
-  >> "$LOG_FILE"
+# Without jq, write a reduced line rather than fail (a missing jq exited 127 under `set -e`). Both
+# counts are numbers, so the hand-built JSON needs no escaping. Without jq SESSION_START is empty
+# above, so the counts cover the whole log rather than this session.
+if command -v jq >/dev/null 2>&1; then
+  jq -Rn \
+    --arg timestamp "$TIMESTAMP" \
+    --argjson total "$TOTAL" \
+    --argjson threats "$THREATS" \
+    '{"timestamp":$timestamp,"event":"session_end","total_events":$total,"threats_detected":$threats}' \
+    >> "$LOG_FILE"
+else
+  printf '{"timestamp":"%s","event":"session_end","total_events":%d,"threats_detected":%d,"log":"reduced-no-jq"}\n' \
+    "$TIMESTAMP" "$TOTAL" "$THREATS" >> "$LOG_FILE"
+fi
 
 if [[ "$THREATS" -gt 0 ]]; then
   echo "[WARN] Session ended: $THREATS threat(s) detected in $TOTAL events"

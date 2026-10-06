@@ -209,7 +209,7 @@ File: $filePath
 
 Code Apps run inside an iframe whose sandbox lacks 'allow-modals'. There, confirm() does not show a dialog - it returns false IMMEDIATELY. So "confirm before deleting" becomes "silently never delete". Nothing throws. The build passes, lint passes, tests pass, and it works perfectly on localhost, which is where you will test it.
 
-Fix: use the UI library this project is configured for. Read the 'ui' field in .github/.baseline-manifest.json - 'shadcn' means AlertDialog ('pnpm dlx shadcn@latest add alert-dialog'), 'fluent' means its Dialog. Installing it is part of finishing the work, not a separate task.
+Fix: use the UI library this project is configured for. Read the 'ui' field in .github/.baseline-manifest.json - 'shadcn' means AlertDialog (add it with the shadcn CLI through the package manager the lockfile shows: 'npx', 'pnpm dlx', or 'yarn dlx' on Yarn 2+ ('npx' on Yarn 1) shadcn@latest add alert-dialog), 'fluent' means its Dialog. Installing it is part of finishing the work, not a separate task.
 
 Do NOT hand-roll a dialog to avoid the install. A native <dialog> element does work here - it is unaffected by allow-modals - but a bespoke one matches nothing else in the app, ignores its theming and a11y conventions, and has to be maintained by hand forever, all to skip one install.
 

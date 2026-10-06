@@ -14,7 +14,7 @@ file and every agent's `tools:` list that should use it.
 |--------|------|----------------|
 | `context7` | Remote HTTP (`https://mcp.context7.com/mcp`) | Nothing to work; optional `CONTEXT7_API_KEY` header for higher rate limits (free key at context7.com/dashboard) |
 | `github` | Remote HTTP (`https://api.githubcopilot.com/mcp`) | GitHub auth via your existing Copilot/VS Code GitHub sign-in |
-| `playwright` | Local (`npx @playwright/mcp@0.0.82`) | Node/npx available; browsers install on first run |
+| `playwright` | Local (`npx -y @playwright/mcp@0.0.82`) | Node/npx available; browsers install on first run |
 | `azure-mcp` | Local (`npx -y @azure/mcp@2.0.5 server start`) | **Manual one-time step:** run `Azure: Sign In` from the Command Palette before use. Without this, `azure-mcp/*` tools fail silently — VS Code won't error loudly, calls just won't return useful results |
 
 ## Pinned versions — and why not `@latest`
@@ -27,8 +27,9 @@ versions are immutable: a pinned version is exactly what was reviewed, on every 
 
 **Bump deliberately**, as part of a release rather than whenever a vendor publishes:
 
-1. `pnpm view <package> dist-tags` — and check `latest` is not a prerelease (`-beta`, `-alpha`,
-   `-rc`). If it is, `pnpm view <package> versions` and take the newest stable one.
+1. `npm view <package> dist-tags` — and check `latest` is not a prerelease (`-beta`, `-alpha`,
+   `-rc`). If it is, `npm view <package> versions` and take the newest stable one. (`npm view` only
+   reads the registry, so it is right in any project, whatever its package manager.)
 2. Read what changed between the pinned version and the new one.
 3. Update `.vscode/mcp.json` and the table above together.
 

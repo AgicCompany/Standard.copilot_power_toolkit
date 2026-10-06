@@ -24,7 +24,8 @@ earned by building one. They are why the linter reports two "belongs to no profi
 | Profile | For |
 |---|---|
 | `react-vite` | React + TypeScript + Vite web app (Tailwind v4 + shadcn/ui, TanStack Query, Vitest) |
-| `power-apps-code-app` | extends `react-vite` + Dataverse, Power Platform, Canvas parity — **the default** |
+| `power-apps-code-app` | extends `react-vite` + Dataverse, Power Platform — **the default** |
+| `power-apps-canvas-migration` | extends `power-apps-code-app` + Canvas YAML, the migration and parity agents and prompts — for a Code App that replaces a Canvas app |
 | `baseline-authoring` | working on this baseline itself, or another Copilot config repo |
 | `full` | everything; escape hatch preserving the pre-profile behaviour |
 

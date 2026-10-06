@@ -21,6 +21,13 @@
         "8cebc0892ba90bc519a0527a340f3081a16cd7c1e6f8d50a4af8968dcc14f81b",
         "cbc55a87465d316d5b34f02a5d0adef3a4b824ad781e426b0a9094110e0b6749"
       ]
+    },
+    {
+      "//": "Removed 2026-10-05: an HTML5 <canvas> graphics tutorial that shipped to every Code App because of the word 'canvas'. One version ever shipped.",
+      "path": "skills/canvas-design/SKILL.md",
+      "sha256": [
+        "c2943d1720ac2ce3971b3a39ce812097663e3330ed914d6da97a085c7234fce4"
+      ]
     }
   ],
   "alwaysExcluded": [
@@ -77,6 +84,7 @@
     "docs/reference/hook-payloads.md",
     "docs/reference/event-probe.md",
     "docs/reference/copilot-memory-tiers.md",
+    "docs/reference/package-managers.md",
     "skills/README.md",
     "docs/WORKFLOW_AUTHORITY.md",
     "docs/project-memory.template.md",
@@ -136,7 +144,7 @@
       ]
     },
     "power-apps-code-app": {
-      "description": "Power Apps Code App: everything in react-vite plus Dataverse, Power Platform, Canvas parity, and App Insights assets.",
+      "description": "Power Apps Code App: everything in react-vite plus Dataverse, Power Platform and App Insights assets. A Code App that replaces a Canvas app uses power-apps-canvas-migration instead.",
       "extends": "react-vite",
       "include": [
         "instructions/power-apps-code-apps.instructions.md",
@@ -144,21 +152,14 @@
         "instructions/csharp-dotnet.instructions.md",
         "docs/reference/dataverse-transactional-writes.md",
         "skills/custom-api-authoring/**",
-        "instructions/power-apps-canvas-yaml.instructions.md",
-        "docs/reference/power-apps-canvas-yaml.md",
         "instructions/devops-core-principles.instructions.md",
         "prompts/ado-pipelines.prompt.md",
-        "skills/canvas-design/**",
         "instructions/work-items.instructions.md",
         "docs/reference/power-apps-code-apps-reference.md",
         "docs/datasource-onboarding.md",
         "agents/dataverse-expert.agent.md",
         "agents/power-platform-expert.agent.md",
-        "agents/canvas-migration-guide.agent.md",
-        "agents/parity-auditor.agent.md",
         "agents/devops.agent.md",
-        "prompts/parity-audit.prompt.md",
-        "prompts/migration-slice.prompt.md",
         "prompts/devops.prompt.md",
         "skills/power-apps-code-app-scaffold/**",
         "skills/dataverse-schema-validator/**",
@@ -166,6 +167,19 @@
         "skills/code-app-deploy/**",
         "skills/lock-semantics-expert/**",
         "skills/appinsights-instrumentation/**"
+      ]
+    },
+    "power-apps-canvas-migration": {
+      "description": "A Code App that replaces an existing Canvas app: everything in power-apps-code-app plus the Canvas YAML rules, the migration and parity agents, and their prompts.",
+      "//": "Split out of power-apps-code-app on 2026-10-05: a Code App built from scratch (no Canvas source) had the migration and parity agents in its picker and their prompts in its slash menu, with nothing to migrate.",
+      "extends": "power-apps-code-app",
+      "include": [
+        "instructions/power-apps-canvas-yaml.instructions.md",
+        "docs/reference/power-apps-canvas-yaml.md",
+        "agents/canvas-migration-guide.agent.md",
+        "agents/parity-auditor.agent.md",
+        "prompts/parity-audit.prompt.md",
+        "prompts/migration-slice.prompt.md"
       ]
     },
     "baseline-authoring": {

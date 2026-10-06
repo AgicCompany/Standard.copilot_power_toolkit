@@ -25,7 +25,18 @@ function featureNames(appRoot) {
 }
 
 // Returns the three config objects, anchored at appRoot.
-export function buildConfig(appRoot, { importX, checkFile }) {
+//
+// createTypeScriptImportResolver is required, not optional. The zones are matched against RESOLVED
+// file paths; without a resolver that knows the `@/` alias, import-x cannot turn `@/features/x` into a
+// file, no zone ever matches, and lint stays green while enforcing nothing. Found in a live project,
+// where the zones never fired until a resolver was added by hand. `tsconfig` is the folder (or file) whose
+// tsconfig declares `paths`; the resolver follows `references`, so Vite's default layout works.
+export function buildConfig(appRoot, { importX, checkFile, createTypeScriptImportResolver, tsconfig }) {
+  if (typeof createTypeScriptImportResolver !== 'function') {
+    throw new Error(
+      '[import-boundaries] createTypeScriptImportResolver is required: without it the `@/` alias never resolves and no boundary is enforced.',
+    );
+  }
   // A feature may not reach into another feature. Compose them at the route/app layer instead.
   const crossFeatureZones = featureNames(appRoot).map((name) => ({
     target: `./${SRC}/features/${name}`,
@@ -58,16 +69,44 @@ export function buildConfig(appRoot, { importX, checkFile }) {
     },
   ];
 
+  // Power Apps Code Apps only - the condition is a power.config.json in the app folder, which every
+  // Code App has. Its generated services are a transport: called from a component they spread loading,
+  // error mapping and retry across screens, and their raw failure body ends up rendered. A plain React
+  // app may own a src/generated (an OpenAPI client, say) with other rules, so it gets no zone.
+  // Written as the complement of what is allowed - a feature's api/ folder, src/lib, src/generated
+  // itself, and tests (which import the service to mock it) - so a new folder is covered by default.
+  const CODE = '!(*.test|*.spec).{ts,tsx,js,jsx}';
+  const generatedZones = fs.existsSync(path.join(appRoot, 'power.config.json'))
+    ? [
+        {
+          target: [
+            `./${SRC}/${CODE}`, // App.tsx, main.tsx and any other file directly in src/
+            `./${SRC}/!(lib|generated|features)/**/${CODE}`, // every other top-level folder
+            `./${SRC}/features/*/${CODE}`, // files at a feature's root
+            `./${SRC}/features/*/!(api)/**/${CODE}`, // any feature folder except api/
+          ],
+          from: `./${SRC}/generated`,
+          message:
+            'Call generated services only from a feature api/ hook or src/lib, so loading, errors and retries live in one place. Components use the hook.',
+        },
+      ]
+    : [];
+
   const importBoundaries = {
     name: 'baseline/import-boundaries',
     files: ['src/**/*.{ts,tsx,js,jsx}'],
     plugins: { 'import-x': importX },
+    settings: {
+      'import-x/resolver-next': [
+        createTypeScriptImportResolver({ project: tsconfig ? path.resolve(appRoot, tsconfig) : appRoot }),
+      ],
+    },
     rules: {
       'import-x/no-restricted-paths': [
         'error',
         // basePath anchors the zones at the app. Without it the rule resolves them against
         // process.cwd(), so they depended on the folder eslint happened to be run from.
-        { zones: [...crossFeatureZones, ...layerZones], basePath: appRoot },
+        { zones: [...crossFeatureZones, ...layerZones, ...generatedZones], basePath: appRoot },
       ],
       // Barrel files defeat tree shaking and cause circular imports.
       'import-x/no-cycle': ['error', { maxDepth: Infinity }],

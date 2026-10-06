@@ -15,9 +15,16 @@ tools:
   # see "What this agent does not do".
   - edit/editFiles
 handoffs:
+  # Implementation handoffs live here, not on plan/small-plan. But handoffs are static: they show after
+  # EVERY delivery reply, including "which issue id?" before any branch exists. So the gate is in the
+  # prompt: the receiving agent checks the branch itself before its first edit.
+  - label: Implement Plan
+    agent: agent
+    prompt: 'Before editing anything, run `git branch --show-current`. If it prints main, master or develop, STOP: the feature branch does not exist yet - say so and go back to delivery. Otherwise implement the plan above step by step; if a step turns out to be wrong or impossible, stop and say which and why instead of improvising.'
+    send: false
   - label: Start With Tests
     agent: tdd
-    prompt: 'The feature branch is created. Write failing tests for the plan above, following the TDD cycle.'
+    prompt: 'Before writing any file, run `git branch --show-current`. If it prints main, master or develop, STOP: the feature branch does not exist yet - say so and go back to delivery. Otherwise write failing tests for the plan above, following the TDD cycle.'
     send: false
   - label: Back to Planning
     agent: plan

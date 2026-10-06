@@ -28,8 +28,8 @@ is why `build-gate` also checks it mechanically.
    tsconfigs *before* `init`**, or it fails with "Could not load the workspace config" — that error
    means missing aliases, not a broken CLI. Never switch to `@canary` to work around it.
 3. **Semantic tokens require the theme.** `bg-primary`, `text-muted-foreground` and friends are CSS
-   variables written by `shadcn init`. Installing `clsx` + `tailwind-merge` gives you the merge
-   helper, **not** the theme.
+   variables written by `shadcn init`. A merge helper (`clsx` + `tailwind-merge`, or shadcn's `cn`
+   package) gives you `cn()`, **not** the theme.
 
 **Check all three BEFORE writing the first class name.** If any is missing you have two acceptable
 moves — **set it up, or ask which the user prefers — and either happens first, before the component
@@ -44,8 +44,10 @@ afterwards. That leaves the user with a component that renders unstyled *and* a 
 
 If a convention depends on a package that isn't installed, **install it**:
 
-- `cva` missing → `pnpm add class-variance-authority`, not a hand-rolled variant `Record`.
-- shadcn component missing → `pnpm dlx shadcn@latest add <name>`, not a styled `<div>`.
+- `cva` missing → `<pm-add> class-variance-authority`, not a hand-rolled variant `Record`.
+- shadcn component missing → `<pm-dlx> shadcn@latest add <name>`, not a styled `<div>`.
+- `<pm-add>` / `<pm-dlx>`: the lockfile's package manager — `npm install` / `npx`, `pnpm add` /
+  `pnpm dlx`, `yarn add` / `yarn dlx` (Yarn 2+; Yarn 1 uses `npx`) — `docs/reference/package-managers.md`.
 - Tailwind or theme missing → set them up.
 
 Each substitution looks reasonable alone. Together they produce a component satisfying none of these
@@ -94,7 +96,7 @@ is probably the Radix one.
   native `<dialog>` to avoid setup overhead" — are the exact failures it exists to prevent, all three
   observed live on 2026-08-01/02.
 
-  **If this project is configured for shadcn, install the component.** `pnpm dlx shadcn@latest add
+  **If this project is configured for shadcn, install the component.** `<pm-dlx> shadcn@latest add
   alert-dialog`. Hand-rolling something shadcn provides is the same violation as
   [line 125's](#) "don't add a UI dependency for something shadcn already provides", pointing the
   other way: it produces a bespoke component that matches nothing else in the app and must be
@@ -103,8 +105,10 @@ is probably the Radix one.
 
 ## Composing
 
-- **Use `cn()`** (the `clsx` + `tailwind-merge` helper in `lib/utils.ts`) for every conditional or
-  merged class list. Template strings produce conflicts Tailwind resolves by source order, not intent.
+- **Use `cn()`** from `lib/utils.ts` for every conditional or merged class list. Read that file
+  rather than assuming its shape: older shadcn writes a `clsx` + `tailwind-merge` helper, newer
+  shadcn writes `export { cn } from "cn"` (its own package). Both merge correctly — do not "fix" one
+  into the other, and do not add `tailwind-merge` to a project that uses the `cn` package. Template strings produce conflicts Tailwind resolves by source order, not intent.
 - **Accept `className` on every component** and merge it last via `cn()`.
 - **Use variants, not booleans.** `cva` variants (`variant="destructive"`) over `isDestructive` /
   `isPrimary` pairs that can contradict each other.

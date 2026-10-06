@@ -79,10 +79,14 @@ Anything a contributor controls is untrusted: title, body, branch name, commit m
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
   ```
-- **Cache on the lockfile hash**, not a static key:
-  `key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}`
-- **`--frozen-lockfile` in CI.** `pnpm install` may resolve differently than the lockfile records;
-  CI must fail on drift rather than silently install something else.
+- **Cache on the lockfile hash**, not a static key — the project's own lockfile:
+  `key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}` (or `pnpm-lock.yaml`,
+  `yarn.lock`). `actions/setup-node` with `cache: npm|pnpm|yarn` does this for you.
+- **Install exactly the lockfile in CI** — `npm ci`, `pnpm install --frozen-lockfile`,
+  `yarn install --frozen-lockfile` (Yarn 1) or `yarn install --immutable` (Yarn 2+): `<pm-ci>` in
+  `docs/reference/package-managers.md`, which also says how to tell the Yarn generations apart. A plain install
+  may resolve differently than the lockfile records; CI must fail on drift rather than silently
+  install something else.
 - **Pin the runner** (`ubuntu-24.04`), not `ubuntu-latest`, when the build is sensitive to the image.
   `latest` moves under you and the failure looks like your change.
 
@@ -90,12 +94,14 @@ Anything a contributor controls is untrusted: title, body, branch name, commit m
 
 Read `package.json` before writing a workflow — do not assume the scripts exist.
 
-- Package manager comes from the lockfile: `pnpm-lock.yaml` → pnpm. This baseline uses **pnpm**;
-  `npm ci` in a pnpm repo produces a confusing, slow, wrong build.
+- Package manager comes from the lockfile: `package-lock.json` → npm, `pnpm-lock.yaml` → pnpm,
+  `yarn.lock` → yarn. The baseline names none. Using another one (`npm ci` in a pnpm repo, or the
+  reverse) produces a confusing, slow, wrong build. pnpm needs `pnpm/action-setup` first — GitHub
+  runners do not ship it.
 - The typecheck command is not always `tsc --noEmit`. A root `tsconfig.json` with `"references"`
   (the Vite scaffold) needs **`tsc -b`** — plain `--noEmit` does not follow references and silently
   checks nothing. `hooks/scripts/build-gate.ps1` makes the same distinction; keep them consistent.
-- Only reference a script that exists. `pnpm test` fails confusingly when `package.json` has no
+- Only reference a script that exists. `<pm> run test` fails confusingly when `package.json` has no
   `test` script.
 
 ## Do not duplicate the hooks

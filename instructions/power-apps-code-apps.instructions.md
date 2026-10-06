@@ -13,7 +13,16 @@ Builder, the full deployment and troubleshooting sections — is in
 ## Check for schema drift before writing data access code
 
 **Do this yourself, at the start of any task that reads or writes Dataverse.** Compare the modified
-time of `power.config.json` against the newest file under `src/generated/`:
+time of `power.config.json` against the newest file under `src/generated/` — **from the app folder**
+(run from the repository root of a multi-host repo, both commands fail):
+
+> **Which app folder.** The folder holding the `power.config.json` that *owns the code in question*:
+> the nearest one at or above the file or feature you are working on. It is the repository root only
+> in a single-app repo; a multi-host or template-derived repo has it in a subfolder such as
+> `src/frontend/`. A repository can hold **several** Code Apps — if the task names no file and more
+> than one `power.config.json` exists (search, skipping `node_modules`), **ask which app** before
+> reading schema or running any `pa` command. Never take the first search result: the wrong app's
+> schema reports entities missing, and the wrong app's push publishes it.
 
 ```powershell
 (Get-Item power.config.json).LastWriteTimeUtc
@@ -52,7 +61,7 @@ localhost — which is where you will test it.
 
 **Use the UI library this project is configured for, and install it if it is not there yet.** Check
 `.github/.baseline-manifest.json` — the `ui` field says `shadcn` or `fluent`. shadcn means
-`AlertDialog` (`pnpm dlx shadcn@latest add alert-dialog`); Fluent means its `Dialog`.
+`AlertDialog` (`<pm-dlx> shadcn@latest add alert-dialog`); Fluent means its `Dialog`.
 
 **Do not hand-roll a dialog, and do not reach for the native `<dialog>` element instead of
 installing.** A native `<dialog>` does work inside the iframe — unlike `confirm()`, it is unaffected
@@ -152,11 +161,31 @@ Returns are `IOperationResult<T>`, with complex and table returns as `Record<str
 Flows are added the same way: `pa app add flow --flow-id <id>`. When to reach for a Custom API at
 all is the multi-row rule below; how to build one is the `custom-api-authoring` skill.
 
+**Failures resolve; they do not reject.** Verified live: a Custom API refused by Dataverse (a missing
+execute privilege, HTTP 403) came back as a *resolved* `{ success: false, error: { message, status,
+requestId } }` — `error` a plain object, not an `Error`. So:
+
+- Check `success` on every result; a `try/catch` alone never sees these failures. Test with a
+  resolved failure, not a rejected promise, or the test exercises a path production never takes.
+- `error.status` carries the HTTP status. A 403 is final — map it to a "not allowed" message and do
+  not retry it.
+- `error.message` is the **raw Dataverse error body**: user and business-unit ids, privilege names,
+  and any plug-in trace text. Never render it. Extract a declared error code if one is present,
+  otherwise show a generic localised message.
+
+**Testing a Custom API from the browser console** needs a session on the environment's **org URL**
+(`https://<org>.crm<n>.dynamics.com/`): open it first, then `fetch('/api/data/v9.2/<api>', …)`
+there. A make.powerapps.com session returns 401.
+
 ## Data access
 
 - **Never call a generated `*Service` directly from a component body.** Wrap it in a hook that owns
   loading, error, pagination, and retry state — see `data-fetching.instructions.md` for the
   TanStack Query pattern this baseline uses.
+- **Validate Dataverse ids with `z.guid()`, not `z.uuid()`.** Zod 4's `uuid()` enforces RFC 9562
+  version and variant bits, and Dataverse ids routinely fail it (a `…-f111-…` third group is version
+  `f`). The schema compiles and the test fixtures pass — written by hand, they are valid UUIDs —
+  then every real id is rejected.
 - **Select only the columns you need**, and **always bound each request**. `getAll()` with no options
   uses the SDK's default page size of 500 — 500 rows pulled into the browser to render twenty, and
   only the first 500 ever shown if the returned `skipToken` is ignored.
@@ -205,6 +234,10 @@ all is the multi-row rule below; how to build one is the `custom-api-authoring` 
   were bugs in your code:
   - no `$batch`, and no client-side transaction across calls — see the transactional writes section
   - no FetchXML
+  - **no `$expand`** — `IGetAllOptions` has `select`, `filter`, `orderBy`, `top`, `skip`, `count`,
+    `skipToken`, `maxPageSize` and nothing else (check the generated file to be sure for your CLI
+    version). Related values come from a second query, a denormalised column, or a Custom API —
+    advice to "use `$expand`" is written for a different client
   - no polymorphic lookups
   - no alternate keys
   - **no `If-Match` / etag on update** — verified in `@microsoft/power-apps`:
@@ -331,17 +364,20 @@ If there isn't one, say so — that is the finding.
   it: it loads the config in `development` mode and may print "failed to load config". Run
   `vite --mode <mode> --port 3000` directly; if no Play URL appears, add
   `pa app run --config-only` in a second terminal.
-- Deploy is `pnpm build` **followed by** `pa app push --solution-id <guid>` — chained with `&&`, never `|`. `pa app push`
+- Deploy is `<pm> run build` **followed by** `pa app push --solution-id <guid>` — chained with `&&`, never `|`. `pa app push`
   ships whatever is in `dist/`, so a push after a failed build silently republishes the previous
-  bundle and the change appears not to have worked. Microsoft's docs use `npm`; translate.
+  bundle and the change appears not to have worked. `<pm>` is the project's package manager
+  (`docs/reference/package-managers.md`); Microsoft's docs use `npm` — keep that only if the lockfile does.
 - Confirm the target environment before any push — `pa auth status`, and check the environment id
   against `power.config.json`. A push to the wrong environment is not trivially reversible.
 - **Always push with `--solution-id <guid>`**, interactively and in a pipeline (`PA_CLI_SOLUTION_ID`).
   Without it the app goes silently into the environment's preferred solution, a per-maker setting
   that can be someone else's working solution. Solution **names are not accepted**, only GUIDs;
   `pa solution list` shows them.
-- `pa` and `pac` sign in separately and can point at different tenants: check `pa auth status` before
-  `pa` commands and `pac org who` before `pac` commands.
+- `pa` and `pac` sign in separately and can point at different tenants. Before `pac` commands:
+  `pac org who`. Before `pa` commands: `pa auth status` **and** the `environmentId` in
+  `power.config.json` — `pa auth status` lists cached *accounts*, not an environment; the environment
+  a `pa` command targets is the one in `power.config.json`.
 - CI deploys with a service principal cannot be set up in a tenant's default environment (`pa app
   share` rejects its `Default-` name); see the `code-app-deploy` skill.
 

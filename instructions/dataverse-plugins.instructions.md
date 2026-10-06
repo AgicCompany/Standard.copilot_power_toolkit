@@ -83,11 +83,57 @@ public sealed class SubmitRequest : PluginBase {
 - **Throw `InvalidPluginExecutionException` with a short stable code.** Never let an exception carry
   a stack trace to the client, and never return a localised sentence — the client maps codes to
   messages. Adding a code means adding its client mapping in the same change.
-- **Catch nothing you cannot handle.** Swallowing an exception inside a transactional stage converts
-  a clean rollback into committed bad data. Let it propagate.
-- **One exception to that:** an operation whose entire job is to never fail the caller — a
+- **Never swallow an exception inside the logic.** Swallowing one inside a transactional stage
+  converts a clean rollback into committed bad data.
+- **Sanitise once, at the boundary, and rethrow.** Check whether the project has a base class
+  (`PluginBase` or similar) that wraps `Execute`. If it does, it must catch everything and rethrow:
+  an exception whose message is a **declared** code becomes a *new* `InvalidPluginExecutionException`
+  carrying only that code (no inner exception); **anything else** becomes the generic code
+  (e.g. `UNEXPECTED_ERROR`). Letting an arbitrary exception propagate sends its message — SQL
+  details, record ids, library internals — to the browser. Rethrowing keeps the rollback; only the
+  text changes. If there is no such base class, propose one rather than repeating the try/catch.
+- **One exception to "never swallow":** an operation whose entire job is to never fail the caller — a
   classifier called by a flow that would otherwise lose the message — wraps every branch and records
   the failure as a row instead. Make that choice explicit in a comment naming why.
+
+## Act as the caller: `InitiatingUserId`, not `UserId`
+
+Create the service that enforces the caller's security with
+`factory.CreateOrganizationService(context.InitiatingUserId)`. `UserId` is the identity the **step**
+runs as; a "Run in user's context" registration can set it to a privileged account, and every
+security check then passes for everyone. Use a SYSTEM service (`CreateOrganizationService(null)`)
+only where the rule requires it, and name why in a comment.
+
+**The test must make the two ids differ.** In a mocked context `UserId` and `InitiatingUserId` are
+usually the same value, so swapping them passes every test. Give them different values and assert
+which one the service was created with.
+
+## Checking the caller's security role
+
+When a plug-in decides by role (a profile flag, a role-gated action):
+
+- **Match by `parentrootroleid`, not `roleid` or name.** Each business unit holds its own copy of a
+  role with its own `roleid`; all copies share the root id. Names are localisable and editable.
+- **Count roles held directly AND through teams.** Query `role` linked to `systemuserroles`
+  (direct), and `role` → `teamroles` → `teammembership` (team). Roles assigned to Entra group teams
+  only appear through the second path; checking `systemuserroles` alone silently denies everyone.
+- **Group-team membership reaches Dataverse lazily** — when the user next signs in to the
+  environment, not when they are added to the Entra group. A "role not working" report right after a
+  group change is usually this.
+- **Do not assume root ids survive an import.** Roles shipped in the solution are expected to keep
+  their ids, but until that is confirmed for the project, check after the first import into another
+  environment before trusting constants in code; if they differ, read the ids from a configuration
+  row instead.
+
+## Gate a Custom API by role: the execute privilege
+
+A Custom API's `ExecutePrivilegeName` makes Dataverse refuse the call (HTTP 403, `PrivilegeDenied`)
+**before the plug-in runs**. To gate by role, create an empty organization-owned *marker* table per
+audience and use its Read privilege (`prvRead<prefix>_<table>`) as the execute privilege; grant that
+Read only to the roles allowed to call. Keep the API `IsPrivate = false`: that flag only hides the
+API from the service metadata, which is what a Code App generates its client from — it secures
+nothing. This is the declarative check; a role test inside the
+plug-in is still right when the answer depends on the record.
 
 ## Guard against re-entry
 
@@ -105,22 +151,34 @@ message rather than calling `Update`.
 
 - **Two-minute execution limit**, and the transaction holds locks for its duration. Long work belongs
   in an asynchronous step or a flow, which means it is outside the transaction — decide deliberately.
-- **No third-party assemblies.** Dependencies must be ILMerged, which is a recurring source of
-  loader failures. Prefer the SDK and the BCL. If a dependency looks unavoidable, say so and ask.
+- **Prefer the SDK and the BCL over dependencies.** A classic assembly needs dependencies ILMerged (a
+  recurring source of loader failures); a plug-in package can carry them, but each one is more to
+  ship and review. If a dependency looks unavoidable, say so and ask.
+- **JSON output: `DataContractJsonSerializer`** (`System.Runtime.Serialization.Json`, in the BCL for
+  `net462`) with `[DataContract]` / `[DataMember(Name = "...")]` on the DTO. Do not reach for
+  `System.Text.Json` or Newtonsoft by habit — both are dependencies here. Build JSON by string
+  concatenation never: it breaks on the first quote in a value.
 - **Sandbox isolation**: no file system, no arbitrary outbound network calls. Reaching another system
   means a webhook, an Azure Service Bus endpoint, or the outbox pattern.
 - **Register steps only on tables you own.** Two plug-ins from two authors on the same message and
   table produce order-dependent defects that surface far from their cause. If you need behaviour on
   someone else's table, ask them for a helper rather than adding a step.
-- **`ITracingService` output only appears in the Plug-in Trace Log**, and only when tracing is
-  enabled on the environment. Trace the inputs and the decision, never field values that carry
-  personal or confidential data.
+- **`ITracingService` output reaches the caller, not only the Plug-in Trace Log.** On failure the Web
+  API returns it as `@Microsoft.PowerApps.CDS.TraceText` to any caller that requests annotations
+  (`Prefer: odata.include-annotations="*"`), and a Code App's generated client does — its error
+  bodies carry the `@Microsoft.PowerApps.CDS.*` annotations. Anyone can read that in the browser's
+  developer tools. **Trace the decision code and exception type names only** — never exception
+  messages, stack traces, input values or field values.
 
 ## Testing
 
 - Rules in plain classes, tested with xUnit and no environment. Every branch of the state machine
   gets a test that permits it and one that denies it.
-- Test the plug-in wrapper against a mocked `IOrganizationService` (FakeXrmEasy or equivalent) —
-  enough to prove the code is thrown and the right rows are written.
+- Test the plug-in wrapper against a mocked `IOrganizationService` — enough to prove the code is
+  thrown and the right rows are written. A mocking library (Moq or similar) over the SDK interfaces
+  is enough; if you consider FakeXrmEasy, check its licence first — current versions are not free
+  for commercial closed-source use.
+- Test the boundary too: an unknown exception surfaces as the generic code with **no** inner
+  exception, and a declared code surfaces unchanged.
 - **Each error code needs a test that provokes it.** A code nothing produces is a mapping that will
   never be exercised until a user meets it.

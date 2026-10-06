@@ -205,8 +205,10 @@ async function processOrder(order) {
 
 ### For Browser Applications (React / Vite / Power Apps Code Apps)
 
+With the package manager the lockfile shows (`<pm-add>` = `npm install`, `pnpm add`, `yarn add`):
+
 ```bash
-pnpm add @microsoft/applicationinsights-web
+<pm-add> @microsoft/applicationinsights-web
 ```
 
 ```ts

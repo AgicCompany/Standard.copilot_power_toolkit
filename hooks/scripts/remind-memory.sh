@@ -37,7 +37,7 @@ command -v jq >/dev/null 2>&1 || exit 0
 # falls through, and a project with an empty memory file gets a reminder claiming it has entries.
 # Same bug found in check-project-context.sh by tools/probe-hooks.sh on 2026-08-03; this one had been
 # shipping and running every session.
-ENTRY_COUNT=$(grep -cE '^\s*-\s+[0-9]{4}-[0-9]{2}-[0-9]{2}:' "$MEMORY_FILE" 2>/dev/null) || ENTRY_COUNT=0
+ENTRY_COUNT=$(grep -cE '^[[:space:]]*-[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}:' "$MEMORY_FILE" 2>/dev/null) || ENTRY_COUNT=0
 [[ -z "$ENTRY_COUNT" ]] && ENTRY_COUNT=0
 [[ "$ENTRY_COUNT" -eq 0 ]] && exit 0
 

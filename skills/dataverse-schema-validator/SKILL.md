@@ -102,4 +102,4 @@ day working around polymorphic lookup support that does not exist.
 - **power.config.json** — source of truth for bound entities
 - **src/generated/** — TypeScript contracts; regenerate rather than edit
 - **canvas_src/DataSources/*.json** — legacy schema, when migrating
-- **`pnpm build`** — catches type mismatches, but only those the stale types already describe
+- **`<pm> run build`** — catches type mismatches, but only those the stale types already describe

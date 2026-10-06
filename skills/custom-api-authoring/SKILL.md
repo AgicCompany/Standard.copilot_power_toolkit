@@ -64,9 +64,24 @@ All of the following was verified in a live environment:
   existing package.
 - **Updates**: `pac plugin push --type Nuget --pluginId <package id> --pluginFile <.nupkg>
   --environment <org url>`. New `IPlugin` classes in the package are registered by the push.
+- **Find the package id** rather than asking for it: from a browser session on the org URL,
+  `GET /api/data/v9.2/pluginpackages?$select=pluginpackageid,uniquename,version`. Record it in the
+  project's memory file once found.
+- **Pushing the same package version again is accepted** — no version bump is needed to iterate
+  in a development environment.
 - **Build with `--no-incremental`, then check the `.nupkg` contents before pushing.** An incremental
   Release build refreshed the DLL but kept the old package, without the new class; it uploaded
   cleanly and failed only when the Custom API ran.
+- **If the project keeps an unpacked solution in source, re-sync it after every push**
+  (`pac solution sync`). The solution carries its own copy of the `.nupkg`; importing a stale copy
+  later silently puts the old plug-in back.
+- **The solution's `.cdsproj` must not `ProjectReference` the plug-in *package* project.** With
+  `Microsoft.PowerApps.MSBuild.Solution` 2.12.2 the solution build fails ("Unable to find assembly
+  registration configuration … PluginAssemblies"): that reference only works for classic
+  assemblies. The package reaches the solution through the sync above. Check the package version in
+  the `.cdsproj` before relying on this — a later one may fix it.
+- **Restart the Plugin Registration Tool after a push that adds plug-in types.** Its type dropdown
+  is cached, so a new class seems missing when binding the Custom API.
 
 ## Step 5 — Register the step, then verify the stage
 
@@ -79,6 +94,11 @@ asynchronous step returns success and writes later, with no rollback; a PreValid
 before the transaction opens. Both pass a happy-path test identically.
 
 State which stage you verified when you report the work done.
+
+**Decide who may call it.** If only some roles may run the operation, set the Custom API's
+*Execute Privilege Name* so Dataverse refuses everyone else before the plug-in runs — the marker-table
+pattern is in `instructions/dataverse-plugins.instructions.md`. Say which privilege you set, or that
+the API is deliberately open to every user.
 
 ## Step 6 — Generate the typed client
 
@@ -109,8 +129,14 @@ const result = await SubmitRequestService.app_SubmitRequest(requestId, payloadJs
 
 - Returns `IOperationResult<T>`; complex and table returns arrive as `Record<string, unknown>`, so
   type them at the boundary yourself rather than spreading `unknown` through the app.
-- **Map the error code to a message** — the server sends a code, not prose. An unmapped code must
-  fall back to a generic message and log the raw value, never render blank.
+- **Check `success`; failures resolve, they do not reject.** A refused call returns
+  `{ success: false, error: { message, status, requestId } }`. `status` 403 is an authorisation
+  failure — a missing execute privilege, or a table or record privilege the operation needed. Show
+  "not allowed" and do not retry; to find *which* privilege, read the server's error body or trace
+  by its `requestId` during debugging, never in the UI.
+- **Map the error code to a message** — the server sends a code, not prose. `error.message` is the
+  raw Dataverse body (ids, privilege names, trace text): extract a declared code from it, never
+  render it. An unmapped code falls back to a generic message, never renders blank.
 - **Invalidate every query the operation touched**, not just the obvious one. A Custom API writing
   four tables leaves four caches stale; the list the user returns to is usually the one forgotten.
 

@@ -11,7 +11,8 @@ why a rule in the instruction file is worded the way it is.
 
 ## Initialisation order (the order is the whole point)
 
-1. `pnpm add tailwindcss @tailwindcss/vite` and wire the plugin into `vite.config.ts`
+1. `<pm-add> tailwindcss @tailwindcss/vite` and wire the plugin into `vite.config.ts`
+   (`<pm-add>`, `<pm-dlx>`, `<pm> run`: the project's package manager, see `package-managers.md`)
 2. Add `"paths": { "@/*": ["./src/*"] }` to **both `tsconfig.json` and `tsconfig.app.json`** — Vite
    splits TS config across files and shadcn reads both.
    **Do not add `"baseUrl"`.** Most shadcn guides still show it, but TypeScript 6 reports it as
@@ -19,11 +20,11 @@ why a rule in the instruction file is worded the way it is.
    `build-gate` — a permanent red typecheck on a project that is otherwise fine. A `paths` entry
    written as `./src/*` resolves relative to the tsconfig without it. Verified on TS 6.0.3.
 3. Add the matching `resolve.alias` for `@` in `vite.config.ts` (needs `@types/node`)
-4. **Only now** `pnpm dlx shadcn@latest init`, then `pnpm dlx shadcn@latest add <component>`
+4. **Only now** `<pm-dlx> shadcn@latest init`, then `<pm-dlx> shadcn@latest add <component>`
 5. Add `src/components/ui/**` to the ESLint ignores — in the Vite flat config that is
    `globalIgnores(['dist', 'src/components/ui/**'])` in `eslint.config.js`.
    The CLI's own output trips `react-refresh/only-export-components`, because `button.tsx` exports
-   both the component and `buttonVariants`. Without this, `pnpm lint` fails immediately after the
+   both the component and `buttonVariants`. Without this, `<pm> run lint` fails immediately after the
    first `add` and `build-gate` reports a `lint` failure forever, on code you did not write and must
    not edit (see `shadcn-ui.instructions.md` — `src/components/ui/**` is generated).
 

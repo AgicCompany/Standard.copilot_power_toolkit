@@ -26,7 +26,7 @@ baseline is built around, and most of its design follows from it:
   Everything else loads by `applyTo` glob, on demand, or not at all. Detail in the core file is paid
   for on every single turn.
 - **Profiles decide what ships.** One baseline, several project types — `react-vite`,
-  `power-apps-code-app`, `baseline-authoring`, `full`. An asset earns its place by belonging to a
+  `power-apps-code-app`, `power-apps-canvas-migration`, `baseline-authoring`, `full`. An asset earns its place by belonging to a
   profile once it has been tested in real use; one that fits no profile ships to nobody, so it does
   not stay. New project type means a new profile.
 - **It is tested.** `tools/lint-baseline.ps1` catches broken globs, dangling handoff targets, hook
@@ -41,7 +41,7 @@ baseline is built around, and most of its design follows from it:
 |---|---|---|
 | **Node.js LTS** | `npx` to apply the baseline; Vite, the test runner, the hooks that call `npx` | `winget install --id OpenJS.NodeJS.LTS -e` |
 | **Git** | the delivery agent and several hooks shell out to it | `winget install --id Git.Git -e` |
-| **pnpm** | the package manager this baseline mandates | `npm install -g pnpm` |
+| pnpm / yarn *(only if the project uses it)* | the baseline names no package manager — the project's lockfile decides; npm ships with Node | `npm install -g pnpm` · `corepack enable` |
 | **VS Code + GitHub Copilot Chat** | everything the baseline configures | — |
 | **Power Apps CLI** *(Power Apps profile only)* | `pa app init` / `add data-source` / `push`. Replaces the legacy `pac code`, which cannot add Dataverse APIs | `npm install --global @microsoft/power-apps-cli` |
 | `gh` *(optional)* | lets the delivery agent open PRs directly | `winget install --id GitHub.cli -e` |
@@ -54,8 +54,9 @@ Two things that bite on a fresh machine:
 
 1. **Restart your terminal after installing anything.** PATH changes don't reach a shell that is
    already open, so the tool you just installed still looks missing.
-2. **Use pnpm to scaffold, not npm.** `copilot-instructions.md` declares pnpm as the one package
-   manager; scaffolding with npm puts a contradiction in front of Copilot from the very first turn.
+2. **Pick the package manager once, and write it down.** The baseline follows the project's lockfile
+   (`docs/reference/package-managers.md`); a new project has none yet, so `/setup` asks and records
+   the choice in `project-context.md`. Mixing two package managers in one project is the defect to avoid.
 
 ### Maintaining the baseline itself
 
@@ -84,7 +85,7 @@ In a pnpm project, `pnpm dlx <npm-package-name> …` does exactly the same.
 
 | Option | What it does |
 |---|---|
-| `--profile <name>` | `react-vite`, `power-apps-code-app` (the default for a new project), `baseline-authoring`, or `full`. **Remembered**: a later run without it keeps the project's profile |
+| `--profile <name>` | `react-vite`, `power-apps-code-app` (the default for a new project), `power-apps-canvas-migration` (a Code App replacing a Canvas app), `baseline-authoring`, or `full`. **Remembered**: a later run without it keeps the project's profile |
 | `--ui shadcn\|fluent` | UI library. `shadcn` is the default; the two are mutually exclusive. Remembered |
 | `--force` | Re-sync: overwrite the baseline's own files with the current version |
 | `--prune` | Also remove baseline files the current profile no longer includes |
@@ -154,8 +155,8 @@ field. See `instructions/agents.instructions.md` for the full schema.
 | `repo-architect` | Scaffold/validate this baseline's own folder structure |
 | `dataverse-expert` | Dataverse schema, query, and integration guidance |
 | `power-platform-expert` | Power Apps Code Apps / canvas / Power Platform guidance |
-| `canvas-migration-guide` | Canvas → React formula/component migration |
-| `parity-auditor` | Canvas ↔ React feature parity audits |
+| `canvas-migration-guide` | Canvas → React formula/component migration (`power-apps-canvas-migration` profile) |
+| `parity-auditor` | Canvas ↔ React feature parity audits (`power-apps-canvas-migration` profile) |
 
 **Role in LLM:** loaded as the active system prompt only while that agent is selected in the picker.
 
@@ -211,7 +212,7 @@ On-demand templates, invoked via slash command (e.g. `/create-prd`). Notable one
 - `session-kickoff.prompt.md` — high-signal task framing (goal/scope/constraints/DoD)
 - `code-review.prompt.md`, `code-review-checklist.prompt.md` — review workflows
 - `create-prd.prompt.md`, `generate-tasks.prompt.md`, `process-task-list.prompt.md` — PRD → tasks → execution pipeline
-- `parity-audit.prompt.md`, `migration-slice.prompt.md` — Canvas → React parity work
+- `parity-audit.prompt.md`, `migration-slice.prompt.md` — Canvas → React parity work (`power-apps-canvas-migration` profile)
 - `.it.prompt.md` variants — Italian-language equivalents of the same workflows
 
 **Role in LLM:** loaded as a user prompt template only when explicitly invoked.

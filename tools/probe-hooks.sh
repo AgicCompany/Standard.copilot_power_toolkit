@@ -255,11 +255,12 @@ P_STOP='{"hook_event_name":"Stop","session_id":"probe"}'
 # Runs a hook from inside a throwaway git repo. PASS = exit 0 and no crash signature. For a
 # sessionStart hook, stdout must also be empty or valid JSON: that stdout is PARSED, and one stray
 # status line silently suppresses the additionalContext of every hook in the batch.
+# HOOK_PATH, when set, is the PATH the HOOK runs with; the probe's own checks keep the real PATH.
 expect_clean_run() {
-  local label="$1" script="$2" payload="$3" parsed_stdout="${4:-}"
+  local label="$1${SMOKE_SUFFIX:-}" script="$2" payload="$3" parsed_stdout="${4:-}"
   CASES=$((CASES + 1))
   local out err rc crash bad_json=""
-  out="$(cd "$SMOKE" && printf '%s' "$payload" | bash "$SCRIPTS/$script" 2>"$WORK/stderr")"; rc=$?
+  out="$(cd "$SMOKE" && printf '%s' "$payload" | PATH="${HOOK_PATH:-$PATH}" bash "$SCRIPTS/$script" 2>"$WORK/stderr")"; rc=$?
   err="$(cat "$WORK/stderr")"
   crash="$(printf '%s\n%s' "$out" "$err" | grep -o -E 'unbound variable|can only be used in a function|syntax error' | head -1)"
   if [[ -n "$parsed_stdout" && -n "${out// }" ]] && ! printf '%s' "$out" | jq -e . >/dev/null 2>&1; then
@@ -274,7 +275,7 @@ expect_clean_run() {
   fi
 }
 
-echo "--- smoke: every bash hook survives a realistic payload ---"
+smoke_all() {
 expect_clean_run "guard-tool, VS Code shape"            guard-tool.sh            "$P_PRE_VS"
 expect_clean_run "guard-tool, CLI shape"                guard-tool.sh            "$P_PRE_CLI"
 expect_clean_run "guard-vite-env, VS Code shape"        guard-vite-env.sh        "$P_PRE_VS"
@@ -294,6 +295,93 @@ expect_clean_run "log-session-end"                      log-session-end.sh      
 expect_clean_run "build-gate"                           build-gate.sh            "$P_STOP"
 expect_clean_run "check-licenses"                       check-licenses.sh        "$P_STOP"
 expect_clean_run "scan-secrets"                         scan-secrets.sh          "$P_STOP"
+}
+
+echo "--- smoke: every bash hook survives a realistic payload ---"
+smoke_all
+
+# The same hooks with jq hidden. This runner always has jq, so the no-jq branches were never run -
+# and three session hooks called jq unguarded under `set -e`, exiting 127 on every session on a
+# machine without it (Git Bash on Windows usually has none). Hiding it: a PATH of symlinks to every
+# command on the real PATH except jq.
+NOJQ_BIN="$WORK/nojq-bin"
+mkdir -p "$NOJQ_BIN"
+IFS=: read -r -a path_dirs <<< "$PATH"
+for d in "${path_dirs[@]}"; do
+  [[ -d "$d" ]] || continue
+  for f in "$d"/*; do
+    n="${f##*/}"
+    [[ "$n" == "jq" || -e "$NOJQ_BIN/$n" || ! -x "$f" ]] && continue
+    ln -s "$f" "$NOJQ_BIN/$n" 2>/dev/null || true
+  done
+done
+if PATH="$NOJQ_BIN" command -v jq >/dev/null 2>&1; then
+  CASES=$((CASES + 1)); FAILURES=$((FAILURES + 1))
+  printf 'FAIL %-44s jq is still reachable\n' "no-jq PATH hides jq"
+else
+  echo "--- smoke: the same hooks with jq absent ---"
+  HOOK_PATH="$NOJQ_BIN" SMOKE_SUFFIX=" (no jq)"
+  smoke_all
+  unset HOOK_PATH SMOKE_SUFFIX
+
+  # Exit 0 is not enough: a hook that simply exits when jq is missing would pass the pass above. Each
+  # session hook must have WRITTEN its reduced record, and the record must be valid JSON (checked
+  # with the probe's own jq).
+  expect_reduced_record() {  # label, log file, event name
+    CASES=$((CASES + 1))
+    local line
+    line="$(grep '"reduced-no-jq"' "$SMOKE/$2" 2>/dev/null | grep "\"event\":\"$3\"" | tail -1)"
+    if [[ -n "$line" ]] && printf '%s' "$line" | jq -e . >/dev/null 2>&1; then
+      printf 'ok   %-44s %s\n' "$1" "valid reduced record"
+    else
+      FAILURES=$((FAILURES + 1))
+      printf 'FAIL %-44s %s\n' "$1" "no valid reduced-no-jq '$3' record in $2"
+    fi
+  }
+  expect_reduced_record "audit-session-start wrote (no jq)" logs/copilot/governance/audit.log session_start
+  expect_reduced_record "audit-session-end wrote (no jq)"   logs/copilot/governance/audit.log session_end
+  expect_reduced_record "log-session-start wrote (no jq)"   logs/copilot/session.log         sessionStart
+fi
+
+# build-gate convention checks must judge an app against the package.json that OWNS it. In a repo
+# whose app sits in src/frontend/ with its own package.json, the root one lists neither tailwindcss
+# nor tailwind-merge, and both checks used to fire on a correctly set-up app. No tsconfig and no lint
+# script here, so the gate goes straight to the conventions; each fixture carries a decoy cn() inside
+# node_modules, which must be ignored.
+echo "--- build-gate: conventions judged against the owning package.json ---"
+expect_gate_conventions() {  # label, app package.json, lib/utils.ts content, expected warnings ("none" or space list), [app folder, default src/frontend]
+  CASES=$((CASES + 1))
+  local dir="$WORK/gate-$CASES" app="${5:-src/frontend}" out got
+  mkdir -p "$dir/$app/src/lib" "$dir/$app/node_modules/decoy"
+  printf '{"name":"root"}' > "$dir/package.json"
+  printf '%s' "$2" > "$dir/$app/package.json"
+  printf '%s\n' 'export const A = () => <div className="flex gap-2 bg-primary" />;' > "$dir/$app/src/a.tsx"
+  printf '%s\n' "$3" > "$dir/$app/src/lib/utils.ts"
+  printf '%s\n' 'export function cn() {}' > "$dir/$app/node_modules/decoy/index.ts"
+  out="$(cd "$dir" && GATE_MIN_INTERVAL_SEC=0 GATE_RUN_LINT=false bash "$SCRIPTS/build-gate.sh" 2>&1)"
+  got="$(printf '%s\n' "$out" | grep -oE '\[WARN\] (tailwind_not_installed|cn_without_tailwind_merge)' | sed 's/\[WARN\] //' | sort | tr '\n' ' ' | sed 's/ $//')"
+  [[ -z "$got" ]] && got="none"
+  if [[ "$got" == "$4" ]]; then
+    printf 'ok   %-44s %s\n' "$1" "$got"
+  else
+    FAILURES=$((FAILURES + 1))
+    printf 'FAIL %-44s expected [%s] got [%s]\n' "$1" "$4" "$got"
+  fi
+}
+expect_gate_conventions "nested app, tailwind + tailwind-merge" \
+  '{"dependencies":{"tailwindcss":"4","tailwind-merge":"3"}}' 'export function cn(...a) { return a.join(" "); }' "none"
+expect_gate_conventions "nested app, shadcn cn package" \
+  '{"dependencies":{"tailwindcss":"4","cn":"0.4"}}' 'export { cn } from "cn";' "none"
+expect_gate_conventions "nested app, nothing installed" \
+  '{"dependencies":{}}' 'export function cn(...a) { return a.join(" "); }' "cn_without_tailwind_merge tailwind_not_installed"
+# Outside ./src entirely (a monorepo layout): the scan used to start at ./src and saw nothing here.
+expect_gate_conventions "apps/web app, nothing installed" \
+  '{"dependencies":{}}' 'export function cn(...a) { return a.join(" "); }' "cn_without_tailwind_merge tailwind_not_installed" "apps/web"
+expect_gate_conventions "apps/web app, all installed" \
+  '{"dependencies":{"tailwindcss":"4","tailwind-merge":"3"}}' 'export function cn(...a) { return a.join(" "); }' "none" "apps/web"
+# `cn` followed by its parameter list, `cnx` must not count: the POSIX boundary replacing \b.
+expect_gate_conventions "cnx() is not cn()" \
+  '{"dependencies":{"tailwindcss":"4"}}' 'export function cnx(...a) { return a.join(" "); }' "none"
 
 # The smoke pass above ran every hook inside a git repo. Whatever they logged must be invisible to
 # git: logs/ is not in a project's .gitignore by default, so the hooks make logs/copilot ignore itself.

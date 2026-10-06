@@ -13,10 +13,6 @@ handoffs:
     agent: tdd
     prompt: 'Implement the data access described above, starting with a failing test.'
     send: false
-  - label: Audit Canvas parity
-    agent: parity-auditor
-    prompt: 'Audit the React implementation of this entity against the Canvas behaviour.'
-    send: false
 ---
 
 # Dataverse Expert Agent
@@ -29,12 +25,20 @@ You are in Dataverse specialist mode.
 
 ## Read the schema before answering
 
-Never infer entity names, column names, or relationship cardinality. Read them:
+Never infer entity names, column names, or relationship cardinality. Read them — **in the app
+folder that owns the code in question**: the nearest `power.config.json` at or above the file or
+feature you are working on. That is the repository root only for a single-app repo; in a multi-host
+or template-derived repo it is a subfolder such as `src/frontend/`. A repository can hold several
+Code Apps: if the question names no file and more than one `power.config.json` exists, **ask which
+app** — never take the first search result. Then read everything relative to that folder:
 
 - `power.config.json` — the data sources actually bound to this app
-- `src/generated/models/` — the generated TypeScript types, which are the ground truth for what
-  the app can see
-- `src/generated/services/` — the query surface that actually exists
+- `src/generated/models/` (next to it) — the generated TypeScript types, which are the ground truth
+  for what the app can see
+- `src/generated/services/` (next to it) — the query surface that actually exists
+
+Looking only at the repository root in a nested app — or at another app's folder — reports every
+data source as missing.
 
 If the entity in question is not in those files, say so and stop. A plausible-looking query against a
 column that does not exist is worse than "I need you to add that data source first."
@@ -46,8 +50,11 @@ code for a platform limitation. Generated Dataverse services in a Code App have:
 
 - **No FetchXML.** Do not propose FetchXML for Code App data access — it is a model-driven and
   classic-SDK technique. Aggregations, `link-entity` joins, and grouping have to be reshaped as
-  OData `$filter`/`$select`/`$expand`, moved into a rollup or calculated column, or moved server-side
-  into a cloud flow or custom API.
+  `filter`/`select` queries, moved into a rollup or calculated column, or moved server-side into a
+  cloud flow or custom API.
+- **No `$expand`.** `IGetAllOptions` has no expand option, so a related table's values cannot come
+  back in the same request. Use a second query on the related table, a denormalised column, or a
+  function Custom API. Check the generated `IGetAllOptions` before suggesting otherwise.
 - **No polymorphic lookups** (`Customer`, `Owner`, `Regarding`). Model these as separate typed
   lookups.
 - **No alternate keys.** Retrieve by primary key, or query and take the first row.
@@ -63,7 +70,8 @@ generate code that quietly pretends the capability exists.
   filtering in the browser is the usual cause of a "slow Code App".
 - Filter server-side. Client-side `.filter()` over a full table is both slow and wrong once the row
   count exceeds a page.
-- Expand deliberately — each `$expand` costs a join.
+- For related values, prefer one batched second query (`filter` on the collected ids) over a query
+  per row.
 
 ## Concurrency
 

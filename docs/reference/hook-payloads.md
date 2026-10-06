@@ -337,7 +337,7 @@ each of them existed to read:
 | Script | Call | Exit | What it should have done |
 |---|---|---|---|
 | `build-gate` | `npx tsc -b` | non-zero on a type error | record `gate_failed` |
-| `build-gate` | `pnpm run lint` | non-zero on a lint finding | record `gate_failed` |
+| `build-gate` | `<pm> run lint` | non-zero on a lint finding | record `gate_failed` |
 | `scan-secrets` | `git diff … HEAD` | 128, repo has no commits | scan the changed files |
 | `check-licenses` | `git diff HEAD` | 128, repo has no commits | list new dependencies |
 

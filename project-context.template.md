@@ -12,7 +12,8 @@ you go — this file should read as facts about the project, not a blank form.
 - Frontend: *e.g. React 19 + TypeScript + Vite*
 - Backend: *e.g. none — Dataverse via `@microsoft/power-apps` generated services*
 - Data platform: *e.g. Dataverse (table names, key entities if known)*
-- Package manager: *e.g. pnpm — state the one true package manager; Copilot should never suggest another*
+- Package manager: *the one the lockfile shows — `package-lock.json` npm, `pnpm-lock.yaml` pnpm,
+  `yarn.lock` yarn. No lockfile yet: choose one and write it here. Copilot never suggests another.*
 
 ## Critical Integrations
 - External APIs: *Name each one and what it's used for*

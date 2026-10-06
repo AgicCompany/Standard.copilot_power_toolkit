@@ -20,7 +20,8 @@ pwsh ./.github_general/tools/apply-baseline.ps1 -ListProfiles
 | Profile | For |
 |---|---|
 | `react-vite` | React + TypeScript + Vite web app — Tailwind v4 + shadcn/ui, TanStack Query, react-hook-form + Zod, Vitest, Playwright |
-| `power-apps-code-app` | **Default.** Everything in `react-vite`, plus Dataverse, Power Platform, Canvas parity, App Insights |
+| `power-apps-code-app` | **Default.** Everything in `react-vite`, plus Dataverse, Power Platform, App Insights |
+| `power-apps-canvas-migration` | A Code App that replaces a Canvas app: everything in `power-apps-code-app`, plus the Canvas YAML rules and the migration/parity agents and prompts |
 | `baseline-authoring` | Working on this baseline itself, or another Copilot config repo |
 | `full` | Everything: the union of every profile, plus the two MCP-authoring instructions no profile ships yet |
 
