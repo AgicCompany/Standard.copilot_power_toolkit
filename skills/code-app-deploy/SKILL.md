@@ -50,7 +50,7 @@ was still signed in to a client tenant from earlier work. Check each before anyt
 
 Order matters. `pa app push` publishes whatever is in the build output directory — it does not
 build for you. `<pm>` is the package manager the project's lockfile shows, recorded in
-`project-context.md` (`docs/reference/package-managers.md`). Run every command from the folder that
+`project-context.md` (`.github/docs/reference/package-managers.md`). Run every command from the folder that
 holds the app's `package.json` and `power.config.json`.
 
 ```bash
@@ -133,7 +133,7 @@ pipeline rather than after it fails at the push.
 | Symptom | Cause | Fix |
 |---|---|---|
 | Push succeeds, app shows old content | `<pm> run build` not run, or pushed from a stale `dist/` | Rebuild, confirm `dist/` mtime, push again |
-| Blank white app after deploy | App waiting on SDK initialization | v1.0 apps must not gate render on SDK init — see `docs/reference/power-apps-code-apps-reference.md` |
+| Blank white app after deploy | App waiting on SDK initialization | v1.0 apps must not gate render on SDK init — see `.github/docs/reference/power-apps-code-apps-reference.md` |
 | Auth/401 errors only after deploy | Connection not shared, or missing in target environment | Verify connections in the target; re-add the data source there |
 | Data works locally, fails deployed | Local play runs as you, with your connections; deployed users need theirs | Test with a real connection before promoting |
 | Push targets the wrong environment | Stale `pa auth` account, or an `environmentId` from another environment | Check `pa auth status` AND `power.config.json` first |

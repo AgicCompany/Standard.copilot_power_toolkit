@@ -24,7 +24,7 @@ Instructions for installing and configuring Tailwind CSS version 4 and above usi
 ### Step 1: Install Dependencies
 
 Install `tailwindcss` and the `@tailwindcss/vite` plugin with the package manager the lockfile shows
-(`<pm-add>` = `npm install`, `pnpm add` or `yarn add` — `docs/reference/package-managers.md`):
+(`<pm-add>` = `npm install`, `pnpm add` or `yarn add` — `.github/docs/reference/package-managers.md`):
 
 ```bash
 <pm-add> tailwindcss @tailwindcss/vite

@@ -82,7 +82,7 @@ be testing less than you think.
 > **Do not commit anything yet.** A repo with no commits has no `HEAD`, which is its own test: three
 > hooks used to abort on `git diff HEAD` (exit 128) before writing a single log line, so their
 > silence read as "never fired" rather than "crashed". Committing first would hide that path. See
-> `docs/reference/hook-payloads.md`.
+> `.github/docs/reference/hook-payloads.md`.
 
 > **Install nothing else.** No Tailwind, no shadcn/ui, no TanStack Query, no Vitest. That is
 > deliberate: a bare scaffold is the *stronger* test. If the packages are already sitting in
@@ -566,7 +566,7 @@ Then check **on disk**: `cat src/components/messy.tsx`
 > chats, window reloads, or a full quit. `Stop` fires after **every completed turn** and is now where
 > `build-gate` runs. That is better than the original design: a type error surfaces while the change
 > is fresh rather than whenever a session happens to end. Probe results:
-> `docs/reference/hook-payloads.md`.
+> `.github/docs/reference/hook-payloads.md`.
 
 Leave a deliberate type error, then send **any** prompt and let Copilot finish:
 
@@ -815,7 +815,7 @@ Copilot saw anything.
 > work — every hook here emitted `additionalContext` in a flat shape the host silently discards. The
 > step was measuring a mechanism that was broken, and would have failed forever while looking like a
 > Power Apps problem. **Correction:** once the payload was nested, injection worked on the next run
-> (see `docs/reference/hook-payloads.md`). The rewrite stands anyway, for the reason below.
+> (see `.github/docs/reference/hook-payloads.md`). The rewrite stands anyway, for the reason below.
 >
 > Two lessons kept here deliberately. First, **the old prompt was also a poor discriminator** — asked
 > about "the data layer", Copilot correctly described the data layer, and reading that as a failure
@@ -827,7 +827,7 @@ Copilot saw anything.
 > `sessionStart` hook does not reach the model in VS Code Copilot Chat. The hook fires, emits valid
 > JSON, and logs `emitted_drift_warning` — and the text never arrives. Verified three times, and
 > confirmed by asking Copilot to enumerate its starting context. See
-> `docs/reference/hook-payloads.md`.
+> `.github/docs/reference/hook-payloads.md`.
 >
 > **Diagnose in this order, or you will chase the wrong layer** — this step cost several cycles
 > before the order was written down:
@@ -892,7 +892,7 @@ Ask the user to confirm before deleting an account.
 
 > Also sharp, and for a non-obvious reason: `window.confirm` works locally and is **silently
 > suppressed inside the Power Apps iframe** — `confirm()` just returns `false`, so the action never
-> happens and nothing errors. Already a documented incident in `docs/reference/shadcn-setup.md`.
+> happens and nothing errors. Already a documented incident in `.github/docs/reference/shadcn-setup.md`.
 > Nothing in build, lint or tests catches it.
 
 ### D8. Concurrent edits
@@ -990,7 +990,7 @@ areas, the fix is the first place to look.
 3. ~~Three agents are stubs.~~ **Fixed** — `dataverse-expert`, `parity-auditor` and
    `canvas-migration-guide` rewritten with real content, and both Power Apps skills rewritten.
 4. **`power-apps-canvas-yaml.instructions.md` is ~690 lines** — still violating the rule that large
-   reference material belongs in `docs/reference/`. **Not fixed.** Most likely to show up as
+   reference material belongs in `.github/docs/reference/`. **Not fixed.** Most likely to show up as
    context dilution in D11.
 5. ~~The client-project cleanup left these too vague to bind.~~ **Fixed, and it was worse than
    "vague"** — `lock-semantics-expert` was a frozen code review of the original codebase asserting

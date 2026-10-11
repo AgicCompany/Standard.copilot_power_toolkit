@@ -17,7 +17,7 @@
 ## Stack
 - **React + TypeScript + Vite.** *(Confirm versions in `project-context.md`.)*
 - **Package manager: the one the lockfile shows**, recorded in `project-context.md`. Never suggest
-  another. Baseline commands write `<pm>`, `<pm-dlx>`…: `docs/reference/package-managers.md`.
+  another. Baseline commands write `<pm>`, `<pm-dlx>`…: `.github/docs/reference/package-managers.md`.
 - Styling **Tailwind v4 + shadcn/ui**, server state **TanStack Query**, forms **react-hook-form +
   Zod**, tests **Vitest + RTL** and **Playwright** for e2e.
 - These are settled decisions. Don't propose alternatives unprompted; **if asked to use something
@@ -53,7 +53,7 @@
 - Branch naming: `feature/<issue-id>-short-description`.
 - Commits: `type(scope): description` — `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
   One logical change per commit.
-- Full model: `instructions/gitflow.instructions.md` and `docs/WORKFLOW_AUTHORITY.md`.
+- Full model: `instructions/gitflow.instructions.md` and `.github/docs/WORKFLOW_AUTHORITY.md`.
 
 ## Safety
 - **A `VITE_` variable is public.** Moving a secret out of source code into a `VITE_` env var does
@@ -67,4 +67,4 @@
 ## Where things are
 - `project-context.md` — this project's stack, integrations, environments, constraints
 - `instructions/` auto-applied by file pattern | `prompts/` slash commands | `agents/` picker
-- `docs/reference/` long catalogues, read on demand | `GOVERNANCE_MATRIX.md` active baseline assets
+- `.github/docs/reference/` long catalogues, read on demand | `GOVERNANCE_MATRIX.md` active baseline assets

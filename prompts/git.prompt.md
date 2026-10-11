@@ -15,7 +15,7 @@ per ogni modifica applicata al codice sorgente bisogna creare un commit.
 il commit deve seguire lo standard per conventional commits. nel body del messaggio deve essere indicato il nome dell'istruzione di prompting ricevuta e una breve spiegazione del motivo
 ## branching e workflow
 
-Il modello è **Gitflow** (`instructions/gitflow.instructions.md`, `docs/WORKFLOW_AUTHORITY.md`): i
+Il modello è **Gitflow** (`instructions/gitflow.instructions.md`, `.github/docs/WORKFLOW_AUTHORITY.md`): i
 branch `feature/*` partono da **`develop`**, mai da `main`; su `main` e `develop` non si committa mai
 direttamente. Se il progetto dichiara un modello diverso in `project-context.md`, vale quello.
 

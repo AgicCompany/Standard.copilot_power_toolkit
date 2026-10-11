@@ -14,7 +14,7 @@ actually run. This hook makes that check deterministic instead.
 
 **Registered on both `sessionEnd` and `Stop`.** Verified live in VS Code Copilot Chat: `sessionEnd`
 never fires (not on new chats, window reloads, or a full quit) while `Stop` fires after every
-completed turn. Copilot CLI may differ, so both are registered - see `docs/reference/hook-payloads.md`.
+completed turn. Copilot CLI may differ, so both are registered - see `.github/docs/reference/hook-payloads.md`.
 
 Running per-turn is **better** than at session end: a type error or a `tailwind_not_installed`
 finding surfaces while the change is fresh. The `GATE_MIN_INTERVAL_SEC` throttle (default 180s)
@@ -43,7 +43,7 @@ Some conventions cannot be enforced by instruction prose. These three are checke
 |---|---|
 | `tailwind_not_installed` | `.tsx`/`.jsx` emitting Tailwind utility classes while `tailwindcss` is absent from `package.json` |
 | `cn_without_tailwind_merge` | a local `cn()` helper while `tailwind-merge` is absent — i.e. a hand-rolled stub that concatenates instead of resolving conflicting utilities |
-| `component_without_test` | a component in `src/components/` with no sibling `.test.tsx` (`src/components/ui/**` is exempt — that's shadcn CLI output) |
+| `component_without_test` | a `.tsx` in any `components/` folder below a `src/` folder, anywhere in the repository (`src/components`, `src/frontend/src/components`, `apps/web/src/components`, `src/features/<f>/components`), with no sibling `.test.tsx`. `components/ui/**` is exempt (shadcn CLI output); `node_modules`, `dist`, `build`, `coverage` are never scanned |
 
 ### Why these are hooks and not instructions
 

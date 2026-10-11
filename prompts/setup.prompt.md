@@ -24,7 +24,7 @@ Perform a thorough analysis of the current project by examining:
   `yarn.lock` yarn (next to the app's `package.json`, else at the repository root). Two lockfiles: report
   it as a defect. **No lockfile** (a new project): ask the user once which to use. Either way, record it
   in `project-context.md` under Package manager — every baseline command depends on it
-  (`docs/reference/package-managers.md`).
+  (`.github/docs/reference/package-managers.md`).
 - Framework detection (React, Next.js, Astro, ASP.NET Core, Laravel, etc.)
 - Build tools and bundlers (Vite, Webpack, esbuild, etc.)
 - Testing frameworks (Playwright, Jest, xUnit, etc.)
@@ -205,7 +205,7 @@ reshape it into a different outline:
 3. **Working rules** (read project-context and project-memory, scope discipline, validate before done)
 4. **Git — always in effect** (Gitflow, branch naming, commit format — preserved verbatim)
 5. **Safety** (secrets, `VITE_` exposure, confirmation for destructive actions)
-6. **Where things are** (pointers to instructions/, prompts/, agents/, docs/reference/)
+6. **Where things are** (pointers to instructions/, prompts/, agents/, .github/docs/reference/)
 
 Detailed per-language and per-framework guidance does **not** belong here — it lives in
 `.github/instructions/*.instructions.md`, auto-applied by `applyTo` glob. Putting it in this file

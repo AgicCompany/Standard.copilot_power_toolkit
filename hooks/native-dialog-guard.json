@@ -7,7 +7,7 @@
   "//5": "This is a HOOK rather than an instruction because the instruction was ignored four times on",
   "//6": "2026-08-01/02, the last time explicitly: 'despite the baseline instructions naming them as",
   "//7": "the styling authority - I used a native window.confirm()'. A denial is the only mechanism in",
-  "//8": "this baseline that has never been talked around. See docs/reference/hook-payloads.md.",
+  "//8": "this baseline that has never been talked around. See .github/docs/reference/hook-payloads.md.",
   "hooks": {
     "preToolUse": [
       {

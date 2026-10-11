@@ -5,7 +5,7 @@
 .DESCRIPTION
   Event: sessionStart. stdout IS parsed for this event - `additionalContext` is injected into the
   session, which is how the warning reaches Copilot. `userPromptSubmitted` stdout is IGNORED, so a
-  per-prompt version of this check is not possible - see docs/reference/hook-payloads.md.
+  per-prompt version of this check is not possible - see .github/docs/reference/hook-payloads.md.
 
   Gitflow says branch first, then work. Nothing enforced that: copilot-instructions.md can make the
   model REFUSE to commit to main (verified), but nothing tells anyone they are already sitting on it
@@ -22,7 +22,7 @@ $PSNativeCommandUseErrorActionPreference = $false
 # Windows PowerShell 5.1 - which the Copilot host uses - turns a native command's STDERR into a
 # TERMINATING ErrorRecord under 'Stop', even with 2>$null and even on exit code 0 (git's
 # "LF will be replaced by CRLF" warning is the case that caught this). The preference has to be
-# lowered around the call itself. See docs/reference/hook-payloads.md.
+# lowered around the call itself. See .github/docs/reference/hook-payloads.md.
 function Invoke-NativeCommand {
   param(
     [Parameter(Mandatory = $true)][string]$Command,

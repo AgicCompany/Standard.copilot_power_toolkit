@@ -38,7 +38,7 @@ and **what do we record**. Most broken error handling answers only the third.
 - **Never log PII, tokens, connection strings, or full record payloads.** Dataverse rows routinely
   contain personal data.
 - Application Insights in Code Apps works through **SDK logger configuration only** — there is no
-  native integration. See `docs/reference/power-apps-code-apps-reference.md`.
+  native integration. See `.github/docs/reference/power-apps-code-apps-reference.md`.
 
 ## Async and data errors
 

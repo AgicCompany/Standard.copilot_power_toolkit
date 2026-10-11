@@ -178,7 +178,7 @@ You are a world-class expert in web accessibility who translates standards into 
 ## Testing Commands
 
 `<pm-dlx>` is the project's one-off runner, from its lockfile — `npx`, `pnpm dlx`, `yarn dlx` on
-Yarn 2+, `npx` on Yarn 1 (`docs/reference/package-managers.md`).
+Yarn 2+, `npx` on Yarn 1 (`.github/docs/reference/package-managers.md`).
 
 ```bash
 # Axe CLI against a local page
@@ -275,7 +275,7 @@ Refs: WCAG 2.2 [2.4.*, 3.3.*, 2.5.*] as applicable.
 ## CI Example (GitHub Actions)
 
 Substitute the placeholders for the project's package manager before using this
-(`docs/reference/package-managers.md`). The `pnpm/action-setup` step is needed **only** for pnpm —
+(`.github/docs/reference/package-managers.md`). The `pnpm/action-setup` step is needed **only** for pnpm —
 GitHub runners do not ship it. It is pinned by commit SHA like every third-party action
 (`github-actions.instructions.md`); it reads the version from `package.json`'s `packageManager` field, or
 add `with: { version: 10 }`. Run `build` only if `package.json` defines it.

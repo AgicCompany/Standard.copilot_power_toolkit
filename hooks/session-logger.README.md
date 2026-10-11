@@ -24,7 +24,7 @@ audit of what an agent *did* — for that, see the logs written by `tool-guardia
 `governance-audit`.
 
 `sessionEnd` is registered too, but in VS Code Copilot Chat it never fires (see
-`docs/reference/hook-payloads.md`); `Stop` is what records turn completion.
+`.github/docs/reference/hook-payloads.md`); `Stop` is what records turn completion.
 
 ## Installation
 

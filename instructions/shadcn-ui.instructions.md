@@ -10,7 +10,7 @@ is an opt-in alternative for projects matching native Power Platform chrome — 
 `fluent-ui-v9.instructions.md` is present.
 
 Setup sequence, CLI failure modes, and the incidents behind these rules:
-[`docs/reference/shadcn-setup.md`](../docs/reference/shadcn-setup.md).
+[`.github/docs/reference/shadcn-setup.md`](../docs/reference/shadcn-setup.md).
 
 ## Preconditions — check before writing a single Tailwind class
 
@@ -24,7 +24,7 @@ is why `build-gate` also checks it mechanically.
    it.** Reporting that styling will not render is what you do when the install *fails* — not
    instead of attempting it. Never quietly emit unusable classes.
 2. **shadcn/ui initialised?** `components.json` and `lib/utils.ts` exist. Not there → follow the
-   ordered sequence in `docs/reference/shadcn-setup.md`. **Path aliases must be configured in both
+   ordered sequence in `.github/docs/reference/shadcn-setup.md`. **Path aliases must be configured in both
    tsconfigs *before* `init`**, or it fails with "Could not load the workspace config" — that error
    means missing aliases, not a broken CLI. Never switch to `@canary` to work around it.
 3. **Semantic tokens require the theme.** `bg-primary`, `text-muted-foreground` and friends are CSS
@@ -47,7 +47,7 @@ If a convention depends on a package that isn't installed, **install it**:
 - `cva` missing → `<pm-add> class-variance-authority`, not a hand-rolled variant `Record`.
 - shadcn component missing → `<pm-dlx> shadcn@latest add <name>`, not a styled `<div>`.
 - `<pm-add>` / `<pm-dlx>`: the lockfile's package manager — `npm install` / `npx`, `pnpm add` /
-  `pnpm dlx`, `yarn add` / `yarn dlx` (Yarn 2+; Yarn 1 uses `npx`) — `docs/reference/package-managers.md`.
+  `pnpm dlx`, `yarn add` / `yarn dlx` (Yarn 2+; Yarn 1 uses `npx`) — `.github/docs/reference/package-managers.md`.
 - Tailwind or theme missing → set them up.
 
 Each substitution looks reasonable alone. Together they produce a component satisfying none of these
@@ -115,7 +115,17 @@ is probably the Radix one.
 - **Check which primitive library this project uses before composing.** `@radix-ui/*` composes via
   `asChild`; `@base-ui/react` composes via `render` and has **no `asChild`**. `asChild` dominates the
   examples online, so it's the default guess and it fails silently on Base UI. Copy the pattern from
-  a component already in this repo, not from memory.
+  a component already in this repo, not from memory. Two Base UI traps that compile and pass tests:
+  - **A `Button` that renders a link needs `nativeButton={false}`**:
+    `<Button nativeButton={false} render={<Link to="/x" />}>`. Without it Base UI keeps button
+    semantics on an `<a>` and logs a warning on every render; the link still works, so nothing fails.
+  - **Hiding a radio (or checkbox) with `sr-only` does not hide it.** The component's own `relative`
+    and `size-4` classes win in the cascade, so the "hidden" control still takes 16px and shifts the
+    text beside it. For a text-only choice (an "EN | IT" toggle), lay the control over its label
+    instead: `className="absolute inset-0 size-full opacity-0"` on the item, `relative` on the label.
+    It stays focusable and clickable, but its own focus ring is now invisible and a label does not
+    pick up its child's focus by itself: give the label an explicit one,
+    `has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring`, or keyboard users lose track of it.
 
 ## Tailwind usage
 
@@ -125,7 +135,7 @@ is probably the Radix one.
   `destructive`, `border`). Raw palette colours (`bg-slate-800`) bypass theming and break dark mode.
 - **Need a status colour the theme lacks?** shadcn has **no `success`/`warning` token**. Extend the
   theme via `@theme { --color-success: ... }` in the CSS entry point — see
-  `docs/reference/shadcn-setup.md`. Don't fall back to `bg-green-100`; it ignores dark mode and
+  `.github/docs/reference/shadcn-setup.md`. Don't fall back to `bg-green-100`; it ignores dark mode and
   drifts from every other status colour. Extending the theme is expected, not scope creep.
 - **Dark mode must work.** Semantic tokens give this free; hardcoded colours do not.
 - **Order long class lists by concern** (layout → spacing → typography → colour → state). An

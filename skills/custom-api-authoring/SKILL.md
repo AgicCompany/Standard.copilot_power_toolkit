@@ -9,7 +9,7 @@ A Code App cannot write more than one row atomically. This skill moves that writ
 wires the typed client back to the app.
 
 Transaction semantics, the pipeline-stage table, the outbox pattern and the Function-vs-Action rule
-are in `docs/reference/dataverse-transactional-writes.md`. Read it once; this skill is the procedure.
+are in `.github/docs/reference/dataverse-transactional-writes.md`. Read it once; this skill is the procedure.
 
 ## Step 1 — Confirm the operation actually needs this
 

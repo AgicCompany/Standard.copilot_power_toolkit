@@ -80,10 +80,22 @@ Run `-DryRun` first on a project you care about.
    - `.github/GOVERNANCE_MATRIX.md`
    - `.vscode/mcp.json` (at project root, not under `.github/`)
 2. Confirm `.github/project-context.md` is filled.
-3. If you'll use `azure-mcp` tools (deployment/best-practices), run `Azure: Sign In` from the VS Code
+3. **Make `develop` the default branch on GitHub.** PR templates, issue templates, `Closes #N`,
+   Dependabot and the cloud agent's hooks all follow the default branch; with `main` as default they
+   do nothing until the first release (see `.github/docs/WORKFLOW_AUTHORITY.md`). Two preconditions,
+   or the setting fails or changes nothing:
+   - `develop` must exist on GitHub. In a new repository create it from `main` first:
+     `git switch -c develop`, then `git push -u origin develop`.
+   - The applied `.github/` files must be committed and pushed on `develop` (through a PR, as for
+     any change): the templates and hooks take effect from what that branch contains.
+
+   Then switch it: Settings → General → Default branch, or
+   `gh repo edit <owner>/<repo> --default-branch develop`. Check with
+   `gh repo view <owner>/<repo> --json defaultBranchRef`.
+4. If you'll use `azure-mcp` tools (deployment/best-practices), run `Azure: Sign In` from the VS Code
    Command Palette once — see `.github/docs/mcp-servers.md`. Without this, those tools fail silently.
-4. Open Copilot chat and run one planning and one review workflow to validate routing.
-5. Run `pwsh ./.github_general/tools/lint-baseline.ps1` against the source before applying, to catch
+5. Open Copilot chat and run one planning and one review workflow to validate routing.
+6. Run `pwsh ./.github_general/tools/lint-baseline.ps1` against the source before applying, to catch
    baseline issues before they propagate.
 
 ## Update Strategy

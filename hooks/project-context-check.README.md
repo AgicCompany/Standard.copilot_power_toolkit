@@ -57,4 +57,4 @@ settled fact by every later session, so a plausible guess in it is worse than a 
 `additionalContext` **must** be nested under `hookSpecificOutput` with a matching `hookEventName`. A
 flat `{ "additionalContext": … }` is accepted, raises no error, and is silently discarded — five
 hooks in this baseline carried that bug and had never worked in any project. See
-`docs/reference/hook-payloads.md`.
+`.github/docs/reference/hook-payloads.md`.

@@ -1,5 +1,5 @@
 ---
-description: 'Dataverse plug-in and Custom API implementation rules for C# in the sandbox — stage registration, statelessness, error contract. Overrides csharp-dotnet.instructions.md where they conflict. Transaction semantics live in docs/reference/dataverse-transactional-writes.md.'
+description: 'Dataverse plug-in and Custom API implementation rules for C# in the sandbox — stage registration, statelessness, error contract. Overrides csharp-dotnet.instructions.md where they conflict. Transaction semantics live in .github/docs/reference/dataverse-transactional-writes.md.'
 applyTo: '**/*.cs'
 ---
 
@@ -57,7 +57,7 @@ happy path is identical either way — so testing does not reveal it.
 **Verify the registration; do not assume it.** Read the step in the Plug-in Registration tool or
 query `sdkmessageprocessingstep`, and say which stage you confirmed. Full detail, including the
 outbox pattern for sends that must not sit inside the transaction:
-`docs/reference/dataverse-transactional-writes.md`.
+`.github/docs/reference/dataverse-transactional-writes.md`.
 
 ## The shape of a Custom API implementation
 

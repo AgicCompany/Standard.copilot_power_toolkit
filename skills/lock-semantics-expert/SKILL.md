@@ -11,7 +11,7 @@ where two users can edit the same record at the same time.
 > **This skill is about two users on one row.** If the problem is one user writing **several rows**
 > in one action, that is atomicity, not concurrency, and nothing here fixes it — a sequence of
 > generated-service calls has no rollback whatever locking you put around it. Go to
-> `docs/reference/dataverse-transactional-writes.md` and the `custom-api-authoring` skill instead.
+> `.github/docs/reference/dataverse-transactional-writes.md` and the `custom-api-authoring` skill instead.
 > The two are easy to conflate because both present as "the data ended up wrong".
 
 ## When to Use This Skill

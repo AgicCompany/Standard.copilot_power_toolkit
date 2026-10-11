@@ -135,7 +135,7 @@ So, for any hook or instruction meant to change what happens **before** work sta
 authoring guide explicitly suggests it for final validation. If it fires here it is a *better* home
 for `build-gate` than `sessionEnd`, because the gate would run when a turn completes rather than
 whenever a session happens to end. That slot is now filled by `Stop`, which is verified to fire after
-every turn; `agentStop` itself has not been re-probed. `docs/reference/event-probe.md` is the procedure
+every turn; `agentStop` itself has not been re-probed. `.github/docs/reference/event-probe.md` is the procedure
 if it ever needs to be.
 
 ## The two dialects

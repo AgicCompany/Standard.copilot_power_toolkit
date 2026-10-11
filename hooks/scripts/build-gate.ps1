@@ -94,7 +94,7 @@ if (-not (Test-Path -LiteralPath 'package.json')) {
 
 # This hook is registered on BOTH sessionEnd and Stop. In VS Code Copilot Chat sessionEnd never
 # fires but Stop fires after EVERY completed turn - so without throttling a full tsc + lint would
-# run after every message. Verified live via the event probe (docs/reference/event-probe.md).
+# run after every message. Verified live via the event probe (.github/docs/reference/event-probe.md).
 # Throttle by timestamp file: run at most once per GATE_MIN_INTERVAL_SEC.
 $MinInterval = if ($env:GATE_MIN_INTERVAL_SEC) { [int]$env:GATE_MIN_INTERVAL_SEC } else { 180 }
 $stampDir = if ($env:GATE_LOG_DIR) { $env:GATE_LOG_DIR } else { 'logs/copilot/build-gate' }
@@ -245,7 +245,11 @@ if ($ConventionMode -ne 'off') {
       }
       foreach ($f in [System.IO.Directory]::EnumerateFiles($dir)) {
         $ext = [System.IO.Path]::GetExtension($f)
-        if ($ext -eq '.ts' -or $ext -eq '.tsx' -or $ext -eq '.jsx') { $srcFiles.Add((New-Object System.IO.FileInfo $f)) }
+        if ($ext -ne '.ts' -and $ext -ne '.tsx' -and $ext -ne '.jsx') { continue }
+        # File symlinks are skipped too, for all three checks: the bash side's grep -r and
+        # find -type f do not pick them up, and the two mirrors must report the same files.
+        if (([System.IO.File]::GetAttributes($f) -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) { continue }
+        $srcFiles.Add((New-Object System.IO.FileInfo $f))
       }
     } catch { }
   }
@@ -291,26 +295,26 @@ if ($ConventionMode -ne 'off') {
     }
   }
 
-  # 3. Components with no colocated test. src/components/ui/** is shadcn CLI output, not ours.
-  if (Test-Path -LiteralPath 'src/components') {
-    $missingTests = @()
+  # 3. Components with no colocated test: every .tsx in a components/ folder below a src/ folder,
+  #    anywhere in the repository (src/components, src/frontend/src/components, apps/web/src/components,
+  #    src/features/<f>/components). It reuses the pruned walk above, so the exclusions and the
+  #    no-reparse-point rule are the same as checks 1-2. components/ui/** is shadcn CLI output, not ours.
+  $missingTests = @()
+  foreach ($f in @($srcFiles | Where-Object { $_.Extension -eq '.tsx' })) {
     try {
-      foreach ($f in (Get-ChildItem -Path 'src/components' -Recurse -File -ErrorAction Stop |
-                      Where-Object { $_.Extension -eq '.tsx' })) {
-        if ($f.Name -match '\.(test|spec|stories)\.tsx$') { continue }
-        if ($f.FullName.Replace('\', '/') -match '/components/ui/') { continue }
-        $testPath = [System.IO.Path]::Combine($f.DirectoryName, ($f.BaseName + '.test.tsx'))
-        if (-not (Test-Path -LiteralPath $testPath)) {
-          $missingTests += (Resolve-Path -LiteralPath $f.FullName -Relative)
-        }
-      }
+      if ($f.Name -match '\.(test|spec|stories)\.tsx$') { continue }
+      $rel = (Resolve-Path -LiteralPath $f.FullName -Relative).Replace('\', '/')
+      if ($rel -notmatch '(^|/)src/(.+/)?components/') { continue }
+      if ($rel -match '/components/ui/') { continue }
+      $testPath = [System.IO.Path]::Combine($f.DirectoryName, ($f.BaseName + '.test.tsx'))
+      if (-not (Test-Path -LiteralPath $testPath)) { $missingTests += $rel }
     } catch { }
-    if ($missingTests.Count -gt 0) {
-      $Conventions += [PSCustomObject]@{
-        check = 'component_without_test'
-        detail = "Component(s) with no colocated .test.tsx. react-ts.instructions.md lists a colocated test as part of the definition of done."
-        files = @($missingTests | Select-Object -First 10)
-      }
+  }
+  if ($missingTests.Count -gt 0) {
+    $Conventions += [PSCustomObject]@{
+      check = 'component_without_test'
+      detail = "Component(s) with no colocated .test.tsx. react-ts.instructions.md lists a colocated test as part of the definition of done."
+      files = @($missingTests | Select-Object -First 10)
     }
   }
 }

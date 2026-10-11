@@ -101,7 +101,9 @@
     "agents/plan.agent.md",
     "agents/small-plan.agent.md",
     "agents/review.agent.md",
-    "agents/delivery.agent.md"
+    "agents/delivery.agent.md",
+      "skills/pr-description/**",
+      "skills/baseline-review-checks/**"
   ],
   "profiles": {
     "react-vite": {

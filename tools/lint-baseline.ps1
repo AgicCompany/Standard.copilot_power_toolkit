@@ -653,6 +653,52 @@ Get-ChildItem -LiteralPath (Join-Path $root 'hooks/scripts') -Filter '*.ps1' -Fi
   }
 }
 
+Write-Host "[lint] Checking shipped references to baseline docs use .github/docs/ ..."
+# In a project the baseline lands under .github/, so baseline docs live at .github/docs/... A shipped
+# asset that says docs/reference/x.md sends the reader (or an agent) to the project's root docs/,
+# which in template-based projects exists and is the wrong folder (issue #40). Only paths that exist
+# in this baseline's docs/ are judged, so a project's own docs/specs and similar stay legal.
+# Exempt: files apply-baseline never copies (alwaysExcluded) and GOVERNANCE_MATRIX.md, which is
+# generated and names every asset relative to the baseline root (instructions/x.md, docs/y.md).
+$docsRoot = Join-Path $root 'docs'
+if (Test-Path -LiteralPath $docsRoot) {
+  $baselineDocs = New-Object 'System.Collections.Generic.HashSet[string]'
+  foreach ($item in Get-ChildItem -LiteralPath $docsRoot -Recurse) {
+    $relDoc = 'docs/' + $item.FullName.Substring($docsRoot.Length + 1).Replace('\', '/')
+    if ($item.PSIsContainer) { $relDoc += '/' }
+    [void]$baselineDocs.Add($relDoc)
+  }
+  $excludedGlobs = @()
+  $profilesPath = Join-Path $root 'tools/baseline-profiles.json'
+  if (Test-Path -LiteralPath $profilesPath) {
+    $excludedGlobs = @((Get-Content -LiteralPath $profilesPath -Raw | ConvertFrom-Json).alwaysExcluded)
+  }
+  $excludedRegex = @($excludedGlobs | ForEach-Object {
+    '^' + ([regex]::Escape($_) -replace '\\\*\\\*', '.*' -replace '\\\*', '[^/]*') + '$'
+  })
+  $refPattern = '(?<![\w./-])(docs/[\w./-]+)'
+  $shippedExt = @('.md', '.json', '.sh', '.ps1', '.mjs', '.yml', '.yaml')
+  # -Force: on Linux/macOS Get-ChildItem skips dot-folders without it, and .vscode/ is shipped.
+  # .git/ and .github/ are then walked but skipped by the alwaysExcluded patterns below.
+  foreach ($file in Get-ChildItem -LiteralPath $root -Recurse -File -Force) {
+    if ($shippedExt -notcontains $file.Extension) { continue }
+    $rel = $file.FullName.Substring($root.Length + 1).Replace('\', '/')
+    if ($rel -eq 'GOVERNANCE_MATRIX.md' -or $rel -like 'node_modules/*') { continue }
+    if (@($excludedRegex | Where-Object { $rel -match $_ }).Count -gt 0) { continue }
+    $lineNo = 0
+    foreach ($line in [System.IO.File]::ReadLines($file.FullName)) {
+      $lineNo++
+      foreach ($m in [regex]::Matches($line, $refPattern)) {
+        $ref = $m.Groups[1].Value.TrimEnd('.', ',', ')', ';', ':', '`')
+        $isBaselineDoc = $baselineDocs.Contains($ref) -or $baselineDocs.Contains($ref.TrimEnd('/') + '/')
+        if ($isBaselineDoc) {
+          $errors += "${rel}:${lineNo}: '$ref' - in a project this file is at .github/$ref; write .github/$ref"
+        }
+      }
+    }
+  }
+}
+
 Write-Host "[lint] Checking GOVERNANCE_MATRIX.md is current ..."
 $genScript = Join-Path $root 'tools/generate-governance-matrix.ps1'
 if (Test-Path -LiteralPath $genScript) {

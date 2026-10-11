@@ -1,5 +1,5 @@
 ---
-description: 'Rules for reading and writing Power Apps Canvas YAML (.pa.yaml / .fx.yaml). Full schema reference lives in docs/reference/power-apps-canvas-yaml.md.'
+description: 'Rules for reading and writing Power Apps Canvas YAML (.pa.yaml / .fx.yaml). Full schema reference lives in .github/docs/reference/power-apps-canvas-yaml.md.'
 applyTo: '**/*.pa.yaml, **/*.fx.yaml'
 ---
 
@@ -7,7 +7,7 @@ applyTo: '**/*.pa.yaml, **/*.fx.yaml'
 
 Canvas source unpacked by `pac canvas unpack`. The complete v3.0 schema — root structure, control
 types, component definitions, data sources, editor state, and the full Power Fx formula reference —
-is in [`docs/reference/power-apps-canvas-yaml.md`](../docs/reference/power-apps-canvas-yaml.md).
+is in [`.github/docs/reference/power-apps-canvas-yaml.md`](../docs/reference/power-apps-canvas-yaml.md).
 Read it when you need the exact shape of a section; do not guess at schema.
 
 ## This is generated source, not hand-authored code

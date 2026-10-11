@@ -1,5 +1,5 @@
 ---
-description: 'Performance rules applied while writing React/Vite code — Core Web Vitals essentials. Full anti-pattern catalogue lives in docs/reference/performance-anti-patterns.md.'
+description: 'Performance rules applied while writing React/Vite code — Core Web Vitals essentials. Full anti-pattern catalogue lives in .github/docs/reference/performance-anti-patterns.md.'
 applyTo: '**/*.{tsx,jsx}'
 ---
 
@@ -9,7 +9,7 @@ Budgets: **LCP < 2.5s**, **INP < 200ms**, **CLS < 0.1**.
 
 The complete catalogue — 50+ anti-patterns with IDs, detection regexes, framework-specific sections
 (Next.js, Angular, Vue), and resource-hint/image/font quick references — is in
-[`docs/reference/performance-anti-patterns.md`](../docs/reference/performance-anti-patterns.md).
+[`.github/docs/reference/performance-anti-patterns.md`](../docs/reference/performance-anti-patterns.md).
 Read it when profiling or chasing a specific regression. The rules below apply as you write code.
 
 ## Rendering and re-renders
@@ -25,7 +25,7 @@ Read it when profiling or chasing a specific regression. The rules below apply a
   screen reader announces "12 items" for a list of 5000. Set `aria-setsize` to the full collection
   length and `aria-posinset` to the row's real index on every item. Nothing else detects this: the
   list renders correctly, type-checks and passes its tests while reporting the wrong size to
-  assistive tech. See `docs/reference/a11y-anti-patterns.md` RX5.
+  assistive tech. See `.github/docs/reference/a11y-anti-patterns.md` RX5.
 - **Split routes with `React.lazy` + `Suspense`.** A single monolithic bundle is the most common
   cause of a slow first paint in a Vite SPA.
 

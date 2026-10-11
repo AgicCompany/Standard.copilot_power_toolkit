@@ -1,5 +1,5 @@
 ---
-description: 'Power Apps Code App rules applied while writing app code — SDK, generated services, Dataverse access, and deployment. Full reference lives in docs/reference/power-apps-code-apps-reference.md.'
+description: 'Power Apps Code App rules applied while writing app code — SDK, generated services, Dataverse access, and deployment. Full reference lives in .github/docs/reference/power-apps-code-apps-reference.md.'
 applyTo: '**/*.{ts,tsx}, **/power.config.json, **/vite.config.*, **/package.json'
 ---
 
@@ -8,7 +8,7 @@ applyTo: '**/*.{ts,tsx}, **/power.config.json, **/vite.config.*, **/package.json
 Code-first web app on Power Platform: **React + TypeScript + Vite**, `@microsoft/power-apps` SDK,
 data via Power Apps CLI-generated services. Long-form material — PCF controls, Power BI embedding, AI
 Builder, the full deployment and troubleshooting sections — is in
-[`docs/reference/power-apps-code-apps-reference.md`](../docs/reference/power-apps-code-apps-reference.md).
+[`.github/docs/reference/power-apps-code-apps-reference.md`](../docs/reference/power-apps-code-apps-reference.md).
 
 ## Check for schema drift before writing data access code
 
@@ -306,7 +306,7 @@ where a synchronous plug-in makes it one Dataverse transaction that rolls back a
   under already-bad conditions, and a partial undo is worse than the partial write.
 
 Full detail — pipeline stages, Function-vs-Action, the error-code contract, the outbox pattern for
-notifications — is in `docs/reference/dataverse-transactional-writes.md`. The end-to-end procedure
+notifications — is in `.github/docs/reference/dataverse-transactional-writes.md`. The end-to-end procedure
 is the `custom-api-authoring` skill.
 
 ## The bundle is not a trust boundary
@@ -367,7 +367,7 @@ If there isn't one, say so — that is the finding.
 - Deploy is `<pm> run build` **followed by** `pa app push --solution-id <guid>` — chained with `&&`, never `|`. `pa app push`
   ships whatever is in `dist/`, so a push after a failed build silently republishes the previous
   bundle and the change appears not to have worked. `<pm>` is the project's package manager
-  (`docs/reference/package-managers.md`); Microsoft's docs use `npm` — keep that only if the lockfile does.
+  (`.github/docs/reference/package-managers.md`); Microsoft's docs use `npm` — keep that only if the lockfile does.
 - Confirm the target environment before any push — `pa auth status`, and check the environment id
   against `power.config.json`. A push to the wrong environment is not trivially reversible.
 - **Always push with `--solution-id <guid>`**, interactively and in a pipeline (`PA_CLI_SOLUTION_ID`).

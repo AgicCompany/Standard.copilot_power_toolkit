@@ -53,7 +53,7 @@ else
   # Minimal escaping fallback so the hook still works without jq.
   esc="$(printf '%s' "$msg" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}')"
   # Nested, exactly like the jq branch above. The flat { "additionalContext": ... } shape is
-  # accepted and silently discarded by the host - see docs/reference/hook-payloads.md.
+  # accepted and silently discarded by the host - see .github/docs/reference/hook-payloads.md.
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$esc"
 fi
 exit 0

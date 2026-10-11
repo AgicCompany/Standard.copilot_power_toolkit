@@ -44,7 +44,7 @@ LOG_FILE="$LOG_DIR/guard.log"
 # (This line once read ${PAYLOAD// } - a variable never assigned. Under `set -u` that aborted with
 # exit 1 on EVERY call, and a non-zero exit from a preToolUse hook blocks the tool call.)
 if [[ -z "${INPUT// }" ]]; then
-  echo "[WARN] tool-guardian: no payload on stdin - nothing was inspected. See docs/reference/hook-payloads.md"
+  echo "[WARN] tool-guardian: no payload on stdin - nothing was inspected. See .github/docs/reference/hook-payloads.md"
   printf '{"timestamp":"%s","event":"guard_no_payload","mode":"%s","reason":"empty_stdin"}
 ' "$TIMESTAMP" "$MODE" >> "$LOG_FILE"
   exit 0

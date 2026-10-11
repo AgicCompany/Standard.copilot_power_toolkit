@@ -383,6 +383,66 @@ expect_gate_conventions "apps/web app, all installed" \
 expect_gate_conventions "cnx() is not cn()" \
   '{"dependencies":{"tailwindcss":"4"}}' 'export function cnx(...a) { return a.join(" "); }' "none"
 
+# component_without_test used to look only at ./src/components, so a nested app was never checked.
+# Each case lists component paths to create, then the paths that get a sibling .test.tsx, then the
+# component paths expected in the warning ("none" when the check must stay silent).
+echo "--- build-gate: component_without_test anywhere below src/ ---"
+expect_gate_components() {  # label, components (space list), tested (space list or "-"), expected (space list or "none")
+  CASES=$((CASES + 1))
+  local dir="$WORK/comp-$CASES" out got p
+  mkdir -p "$dir"
+  printf '{"name":"root","dependencies":{"tailwindcss":"4","cn":"0.4"}}' > "$dir/package.json"
+  for p in $2; do mkdir -p "$dir/$(dirname "$p")"; printf '%s\n' 'export const C = () => null;' > "$dir/$p"; done
+  if [[ "$3" != "-" ]]; then
+    for p in $3; do printf '%s\n' 'export {};' > "$dir/${p%.tsx}.test.tsx"; done
+  fi
+  out="$(cd "$dir" && GATE_MIN_INTERVAL_SEC=0 GATE_RUN_LINT=false bash "$SCRIPTS/build-gate.sh" 2>&1)"
+  got="$(printf '%s\n' "$out" | sed -n '/component_without_test/,/^$/p' | grep -oE '\./[^ ]+\.tsx' | sed 's#^\./##' | sort | tr '\n' ' ' | sed 's/ $//')"
+  [[ -z "$got" ]] && got="none"
+  if [[ "$got" == "$4" ]]; then
+    printf 'ok   %-44s %s\n' "$1" "$got"
+  else
+    FAILURES=$((FAILURES + 1))
+    printf 'FAIL %-44s expected [%s] got [%s]\n' "$1" "$4" "$got"
+  fi
+}
+expect_gate_components "root src/components, untested" \
+  "src/components/card.tsx" "-" "src/components/card.tsx"
+expect_gate_components "nested app, untested" \
+  "src/frontend/src/components/card.tsx" "-" "src/frontend/src/components/card.tsx"
+expect_gate_components "nested app, tested" \
+  "src/frontend/src/components/card.tsx" "src/frontend/src/components/card.tsx" "none"
+expect_gate_components "feature components folder, untested" \
+  "src/frontend/src/features/requests/components/list.tsx" "-" "src/frontend/src/features/requests/components/list.tsx"
+expect_gate_components "apps/web layout, untested" \
+  "apps/web/src/components/card.tsx" "-" "apps/web/src/components/card.tsx"
+expect_gate_components "shadcn ui output is exempt" \
+  "src/frontend/src/components/ui/button.tsx" "-" "none"
+expect_gate_components "node_modules is never scanned" \
+  "src/frontend/node_modules/pkg/src/components/x.tsx" "-" "none"
+expect_gate_components "components outside src is not a component folder" \
+  "docs/components/example.tsx" "-" "none"
+
+# A symlinked component is not scanned: find -type f skips it, and build-gate.ps1 skips file reparse
+# points to match. Only a real file in the same folder is reported.
+CASES=$((CASES + 1))
+SYMDIR="$WORK/comp-symlink"
+mkdir -p "$SYMDIR/src/components" "$SYMDIR/shared"
+printf '{"name":"root","dependencies":{"tailwindcss":"4","cn":"0.4"}}' > "$SYMDIR/package.json"
+printf '%s\n' 'export const C = () => null;' > "$SYMDIR/src/components/real.tsx"
+printf '%s\n' 'export const C = () => null;' > "$SYMDIR/shared/target.tsx"
+if ln -s "$SYMDIR/shared/target.tsx" "$SYMDIR/src/components/linked.tsx" 2>/dev/null && [[ -L "$SYMDIR/src/components/linked.tsx" ]]; then
+  got="$(cd "$SYMDIR" && GATE_MIN_INTERVAL_SEC=0 GATE_RUN_LINT=false bash "$SCRIPTS/build-gate.sh" 2>&1 | sed -n '/component_without_test/,/^$/p' | grep -oE '\./[^ ]+\.tsx' | sed 's#^\./##' | sort | tr '\n' ' ' | sed 's/ $//')"
+  if [[ "$got" == "src/components/real.tsx" ]]; then
+    printf 'ok   %-44s %s\n' "symlinked component is not scanned" "$got"
+  else
+    FAILURES=$((FAILURES + 1))
+    printf 'FAIL %-44s expected [%s] got [%s]\n' "symlinked component is not scanned" "src/components/real.tsx" "$got"
+  fi
+else
+  printf 'skip %-44s %s\n' "symlinked component is not scanned" "(this shell cannot create symlinks)"
+fi
+
 # The smoke pass above ran every hook inside a git repo. Whatever they logged must be invisible to
 # git: logs/ is not in a project's .gitignore by default, so the hooks make logs/copilot ignore itself.
 # `cd` + git rather than `git -C`, and a failing git status is itself a FAIL: an empty result must

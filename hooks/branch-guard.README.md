@@ -35,7 +35,7 @@ It also tells Copilot to raise it **once** and accept the answer, so a deliberat
 
 Only `sessionStart` has **parsed stdout** — its `additionalContext` is injected into the session.
 `userPromptSubmitted` fires reliably but its stdout is ignored, so a per-prompt version of this check
-cannot reach the model at all. See `docs/reference/hook-payloads.md`.
+cannot reach the model at all. See `.github/docs/reference/hook-payloads.md`.
 
 Running once per chat is the right granularity regardless: branches rarely change mid-conversation.
 

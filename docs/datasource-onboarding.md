@@ -47,6 +47,6 @@ The generated service is a transport. Call it from a hook in the owning feature'
 
 ## 6. Before reporting done
 
-- The project's build passes (`<pm> run build` — `docs/reference/package-managers.md`).
+- The project's build passes (`<pm> run build` — `.github/docs/reference/package-managers.md`).
 - Errors from the new calls are mapped to user-safe messages, not rendered raw.
 - `power.config.json` and the generated files are committed together with the code that uses them.

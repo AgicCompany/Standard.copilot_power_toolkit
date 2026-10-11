@@ -36,14 +36,14 @@ that it is a baseline-level fact, naming the file it belongs in.** That sentence
 that gets it out of this repo. Without it, every project rediscovers the same limitation, pays the
 same investigation cost, and the baseline never learns.
 
-Also check the baseline does not already say it. Duplicating `docs/reference/*` or an
+Also check the baseline does not already say it. Duplicating `.github/docs/reference/*` or an
 `instructions/*` rule here creates a second copy that drifts out of sync with the original.
 
 > Measured 2026-08-03: an agent added four entries in one turn. Three were stack facts — shadcn now
 > defaulting to Base UI rather than Radix, `defineConfig` needing to come from `vitest/config`, and
 > React Testing Library's cleanup not self-registering when `test.globals` is false. All three were
 > accurate and useful. None was flagged for upstreaming, and the first was **already** documented in
-> the baseline's own `docs/reference/shadcn-setup.md`.
+> the baseline's own `.github/docs/reference/shadcn-setup.md`.
 
 ## User Preferences
 

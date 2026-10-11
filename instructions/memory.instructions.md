@@ -67,7 +67,7 @@ bind**, and if behaviour differs between two machines with identical repos, look
 **When you cite a preference that isn't in a repo file, name the store it came from.** An uncited
 preference is indistinguishable from one you invented.
 
-Paths, audit commands and the incident that uncovered this tier: `docs/reference/copilot-memory-tiers.md`.
+Paths, audit commands and the incident that uncovered this tier: `.github/docs/reference/copilot-memory-tiers.md`.
 
 ## What to store
 

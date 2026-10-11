@@ -254,6 +254,11 @@ Two more rules of thumb from the same testing:
   editing any agent/instruction/hook/skill frontmatter or MCP config — it catches the bad-`agent:`-field
   class of bug, dangling hook script paths, invalid hooks.json, and unconfigured MCP tool references.
   It's advisory (warnings don't fail it), but errors mean something is genuinely broken.
+- **In shipped assets, refer to baseline docs as `.github/docs/...`**, the path they have in a project,
+  even though in this repository they sit at `docs/`. A bare `docs/reference/x.md` sends the reader to
+  the project's own root `docs/` folder, which template-based projects have, so the wrong file is
+  silently missing (issue #40). `lint-baseline.ps1` errors on it. `GOVERNANCE_MATRIX.md` is exempt: it
+  is generated and names every asset relative to this repository's root.
 - Do not copy content from other "awesome-copilot"-style catalogs/marketplaces wholesale. Past
   instances of that (an old `AGENTS.md`, `docs/README.*.md` catalog dumps, a broken `plugins/`
   manifest) referenced files, commands, and processes that don't exist in this repo and have since
