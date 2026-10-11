@@ -29,15 +29,15 @@ Remove the `<!-- hint -->` comments you have replaced.
 | Section | Evidence | How |
 |---|---|---|
 | Issue (`Closes #n`) | the branch name, `feature/<n>-…` | `git branch --show-current`. No number in the name: ask, do not invent one |
-| What | commits and the diff against the base branch | `git log --oneline <base>..HEAD`, `git diff --stat <base>...HEAD`. The base is the PR's target, normally `develop` |
+| What | commits and the diff against the base branch | `git log --oneline <base>..HEAD`, `git diff --stat <base>...HEAD`. The base comes from the branch type: `develop` for `feature/*`, `main` for `release/*` and `hotfix/*`; for an existing PR, its own base (`gh pr view <n> --json baseRefName`) |
 | Scope (functional sections, requirements) | the issue body | `gh issue view <n> --repo <owner>/<repo>`; compare what it asks with what the diff does, and state any deviation |
-| Tests, lint, build | results produced **on the exact commit being described** | first reuse evidence from this session for that commit (the `checklist` agent's gate report, `logs/copilot/build-gate/gate.log` with its commit or timestamp). Only if there is none, read the nearest `package.json` (and the test project for .NET) and run the scripts it defines, single-run form. Copy the real summary line; nothing for that commit: say "not run" |
+| Tests, lint, build | results produced **after the final commit** | read the nearest `package.json` (and the test project for .NET) and run the scripts it defines, single-run form, once the last commit is made. Copy the real summary line; not run: say "not run". The build-gate log records a time, not a commit, and normally ran before the commit, so it cannot stand in for these results: mention it only as context, with its timestamp |
 | Changes outside the code (environments, deployments, data) | the paths the diff touches | name what the paths imply (for example an exported solution package changed, a new API definition folder), not what you suppose was done |
 | Data model | generated schema files or docs in the diff | changed or not; a linked data-model issue if there is one |
 
-Never reuse a number produced on an earlier commit: after a new commit the old result says nothing.
-If a check failed, the description says so and the PR is not ready: stop and report that instead of
-opening it.
+Never reuse a number from earlier in the session: you cannot prove which code it ran on, and after a
+new commit it says nothing. If a check failed, the description says so and the PR is not ready: stop
+and report that instead of opening it.
 
 ## 3. What only a person can supply: mark it, never fill it
 
@@ -53,7 +53,8 @@ the reason in a few words, or leave it for the person.
 ## 4. Open or update the PR
 
 - Write the body to a file and pass it with `--body-file`; long bodies break shell quoting.
-- Name the repository explicitly: `gh pr create --repo <owner>/<repo> --base <base> --head <branch>
+- Use the same `<base>` as in section 2 (`develop` for `feature/*`, `main` for `release/*` and
+  `hotfix/*`), and name the repository explicitly: `gh pr create --repo <owner>/<repo> --base <base> --head <branch>
   --title "<conventional title>" --body-file <file>`, or `gh pr edit <n> --repo <owner>/<repo>
   --body-file <file>`. Never rely on the current folder to choose the repository.
 - Report what happened: the PR URL, and which sections still say TO FILL IN.

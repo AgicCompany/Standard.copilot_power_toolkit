@@ -104,13 +104,16 @@ Reached from `checklist` once the quality gate passes.
 - **The plan is the source for the "what" and the scope.** If you arrived through `plan`/`small-plan`,
   its Overview, Requirements, Steps and Testing are still in context — use them inside the template's
   sections rather than re-deriving the intent from the diff.
-- Include the gate evidence from `logs/copilot/build-gate/gate.log` if the `checklist` agent reported
-  it — a PR that states "typecheck + lint clean as of <timestamp>" is reviewable; one that says
-  "all good" is not.
-- If `gh` is available: `gh pr create --repo <owner>/<repo> --base develop --head <branch> --title ...
-  --body-file ...`. **If `gh` is not installed or not authenticated, say so and print the exact command
-  plus the compare URL** — do not pretend the PR was opened.
-- Target `develop` for `feature/*`, `main` for `hotfix/*`.
+- The gate evidence from `logs/copilot/build-gate/gate.log` (if `checklist` reported it) is context,
+  stated with its timestamp: it ran before the commit and records no commit. The test, lint and build
+  results in the description come from the run the `pr-description` skill makes after the final
+  commit. Running those scripts for the description is not re-judging the gate: `checklist`'s verdict
+  stands.
+- If `gh` is available: `gh pr create --repo <owner>/<repo> --base <base> --head <branch> --title ...
+  --body-file ...`, where `<base>` comes from the branch type: `develop` for `feature/*`, `main` for
+  `release/*` and `hotfix/*`. **If `gh` is not installed or not authenticated, say so and print the
+  exact command plus the compare URL** — do not pretend the PR was opened.
+- Target `develop` for `feature/*`, `main` for `release/*` and `hotfix/*` (Gitflow merges both back into `develop` afterwards).
 
 ## Confirm before anything irreversible
 
