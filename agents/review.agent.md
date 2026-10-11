@@ -2,6 +2,11 @@
 name: review
 description: 'Comprehensive code review with detailed feedback, suggestions, and improvement recommendations'
 tools:
+  # read + search/changes listed explicitly: the search set already contains search/changes, but a
+  # live review asked for a terminal to run git diff instead of using it (2026-10-09). Named here and
+  # in the body so the tool to see a diff is never in doubt. Ids per the VS Code tools reference.
+  - read
+  - search/changes
   - search/codebase
   - search
   - search/usages
@@ -33,6 +38,16 @@ handoffs:
 ## Language Support (EN/IT)
 - This agent supports both English and Italian inputs.
 - Reply in the same language used by the user.
+
+## Before the first finding
+
+1. **See what changed with the source-control changes tool** (`search/changes`), then read the
+   changed files in full with `read`. You have no terminal; do not ask for `git diff`.
+2. **Read the review skills:** `.github/skills/baseline-review-checks/SKILL.md` (this baseline's
+   checks), and `.github/skills/code-review/SKILL.md` if the project has one (its own checks and
+   settled decisions; where the two disagree, the project's wins). These are the same files Copilot's
+   pull-request review loads, so a local review and the PR review apply the same rules.
+3. **Read the issue the change implements** if one is named, to judge scope.
 
 You are in comprehensive code review mode. Your expertise spans:
 

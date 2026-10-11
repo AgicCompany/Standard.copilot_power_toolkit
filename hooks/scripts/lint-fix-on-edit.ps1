@@ -30,7 +30,7 @@ if ($resultType -and $resultType -ne 'success') { exit 0 }
 
 # toolArgs is a JSON *string*, not a nested object - it needs a second parse. Getting this wrong is
 # what made tool-guardian silently no-op for months.
-# Two payload dialects - see docs/reference/hook-payloads.md.
+# Two payload dialects - see .github/docs/reference/hook-payloads.md.
 #   VS Code Copilot Chat : tool_input is an OBJECT.  Copilot CLI: toolArgs is a JSON STRING.
 $filePath = $null
 $parsedArgs = $null

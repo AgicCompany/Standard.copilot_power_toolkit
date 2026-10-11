@@ -49,7 +49,7 @@ const [params, setParams] = useSearchParams();   // ✅ shareable, survives refr
   result and see an empty list.
 - URLs are user-editable input: `?page=banana` will reach your code.
 
-Debouncing, `replace` vs `push`, and parsing with Zod: `docs/reference/url-state.md`.
+Debouncing, `replace` vs `push`, and parsing with Zod: `.github/docs/reference/url-state.md`.
 
 ## Definition of done for a new component
 

@@ -93,4 +93,4 @@ the same record needs an explicit answer to "what happens if both save?":
   body — see `data-fetching.instructions.md`.
 - Explain the Dataverse constraint behind a recommendation (row-level security, option set values,
   relationship cardinality) so the user can generalise it.
-- For adding a new data source, point to `docs/datasource-onboarding.md`.
+- For adding a new data source, point to `.github/docs/datasource-onboarding.md`.

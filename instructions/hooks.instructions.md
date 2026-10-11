@@ -129,7 +129,7 @@ Support **both**, and never gate on the tool name (values differ: VS Code uses `
 
 Confirmed live by capturing a real payload: scripts written against the CLI shape alone found no
 fields at all in VS Code Chat, and `tool-guardian` logged `guard_passed` 200+ times while
-inspecting nothing. Full schema and capture procedure: `docs/reference/hook-payloads.md`.
+inspecting nothing. Full schema and capture procedure: `.github/docs/reference/hook-payloads.md`.
 
 ### Reading stdin and responding — Bash and PowerShell
 
@@ -453,7 +453,7 @@ These are the payload shapes from the hooks reference. Always verify against the
 > logs success and the model sees nothing. Every context-injecting hook in this baseline had this bug
 > and had never worked in any project until 2026-08-01. `hookEventName` must match the event.
 > Verified working once corrected. `lint-baseline.ps1` enforces it. See
-> `docs/reference/hook-payloads.md`.
+> `.github/docs/reference/hook-payloads.md`.
 
 `additionalContext` is injected directly into the session conversation, letting hooks provide environment-specific context dynamically.
 

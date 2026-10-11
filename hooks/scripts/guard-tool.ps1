@@ -65,7 +65,7 @@ $ToolInput = ''
 # looks healthy. If the payload is unusable, say so and stop; do not fall through to the threat scan.
 if ([string]::IsNullOrWhiteSpace($Input_)) {
   Write-Host "[WARN] tool-guardian: no payload on stdin - nothing was inspected. This host may not"
-  Write-Host "       pass hook input the way the scripts expect. See docs/reference/hook-payloads.md"
+  Write-Host "       pass hook input the way the scripts expect. See .github/docs/reference/hook-payloads.md"
   [PSCustomObject]@{ timestamp = $Timestamp; event = 'guard_no_payload'; mode = $Mode; reason = 'empty_stdin' } |
     ConvertTo-Json -Compress | Write-HookLog -Path $LogFile
   exit 0
@@ -75,7 +75,7 @@ try {
   $parsed = $Input_ | ConvertFrom-Json -ErrorAction Stop
   # tool_name / tool_input  = VS Code Copilot Chat (tool_input is an OBJECT)
   # toolName  / toolArgs    = Copilot CLI docs      (toolArgs is a JSON STRING)
-  # See docs/reference/hook-payloads.md - only the CLI shape was ever supported before.
+  # See .github/docs/reference/hook-payloads.md - only the CLI shape was ever supported before.
   if ($parsed.PSObject.Properties.Name -contains 'tool_name' -and $parsed.tool_name) {
     $ToolName = [string]$parsed.tool_name
   }
@@ -158,7 +158,7 @@ foreach ($p in $Patterns) {
 # Log the truth rather than a clean pass.
 if ([string]::IsNullOrWhiteSpace($ToolName) -and [string]::IsNullOrWhiteSpace($ToolInput)) {
   Write-Host "[WARN] tool-guardian: payload parsed but contained no toolName/toolArgs - nothing was"
-  Write-Host "       inspected. Do not treat this as a pass. See docs/reference/hook-payloads.md"
+  Write-Host "       inspected. Do not treat this as a pass. See .github/docs/reference/hook-payloads.md"
   [PSCustomObject]@{ timestamp = $Timestamp; event = 'guard_unparsed_payload'; mode = $Mode; reason = 'no_toolname_or_toolargs' } |
     ConvertTo-Json -Compress | Write-HookLog -Path $LogFile
   exit 0

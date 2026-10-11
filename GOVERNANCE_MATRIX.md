@@ -95,6 +95,7 @@ catch-all `full` profile.
 | `skills/agent-governance/SKILL.md` | \| | baseline-authoring |
 | `skills/agentic-eval/SKILL.md` | \| | baseline-authoring |
 | `skills/appinsights-instrumentation/SKILL.md` | Automates the integration of Azure Application Insights telemetry into web applications for monitoring, dia... | power-apps-canvas-migration, power-apps-code-app |
+| `skills/baseline-review-checks/SKILL.md` | TRIGGER - read this when reviewing a pull request, a branch or a diff: Copilot code review on a PR, the rev... | all |
 | `skills/code-app-deploy/SKILL.md` | TRIGGER - read this BEFORE running any CLI command that writes to an environment, especially pa app push, a... | power-apps-canvas-migration, power-apps-code-app |
 | `skills/component-scaffold/SKILL.md` | TRIGGER - read this BEFORE writing the first line of any new React component, and before creating any file ... | power-apps-canvas-migration, power-apps-code-app, react-vite |
 | `skills/custom-api-authoring/SKILL.md` | TRIGGER - read this BEFORE writing any handler that changes more than one Dataverse row in a single user ac... | power-apps-canvas-migration, power-apps-code-app |
@@ -104,6 +105,7 @@ catch-all `full` profile.
 | `skills/lock-semantics-expert/SKILL.md` | Reusable patterns for optimistic locking, conflict resolution, retry logic, and concurrent data safety | power-apps-canvas-migration, power-apps-code-app |
 | `skills/mcp-builder/SKILL.md` | Build Model Context Protocol (MCP) servers to extend GitHub Copilot and AI agents with custom tools and dat... | baseline-authoring |
 | `skills/power-apps-code-app-scaffold/SKILL.md` | Power Apps CLI walkthrough for Power Apps Code Apps — auth, project init, and connecting Dataverse tables a... | power-apps-canvas-migration, power-apps-code-app |
+| `skills/pr-description/SKILL.md` | TRIGGER - read this BEFORE writing the description of a pull request, or before running gh pr create / gh p... | all |
 
 ## Hooks
 

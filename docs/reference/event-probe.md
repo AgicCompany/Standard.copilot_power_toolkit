@@ -20,7 +20,7 @@ Untested hypotheses:
 3. `agentStop` fires when a turn completes — which would be a **better** trigger than session end
    anyway, since the gate would run after each change rather than once at the very end.
 
-### Results — recorded in `docs/reference/hook-payloads.md`
+### Results — recorded in `.github/docs/reference/hook-payloads.md`
 
 This probe has been run. Read the results before registering anything new:
 

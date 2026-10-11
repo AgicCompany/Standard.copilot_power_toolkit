@@ -124,7 +124,7 @@ For content quality principles (what to include and what to leave out), see [Wri
 - User wants to debug frontend behavior with browser console logs
 ```
 
-**`## Prerequisites`** — Only include if the skill requires tools, services, or configuration that Copilot cannot assume are available. List exact install commands. Write package-manager commands with the placeholders from `docs/reference/package-managers.md` (`<pm>`, `<pm-add>`, `<pm-exec>`…): the skill ships into projects on npm, pnpm and yarn, and a hard-coded `pnpm add` is wrong in two of them.
+**`## Prerequisites`** — Only include if the skill requires tools, services, or configuration that Copilot cannot assume are available. List exact install commands. Write package-manager commands with the placeholders from `.github/docs/reference/package-managers.md` (`<pm>`, `<pm-add>`, `<pm-exec>`…): the skill ships into projects on npm, pnpm and yarn, and a hard-coded `pnpm add` is wrong in two of them.
 
 ```markdown
 ## Prerequisites

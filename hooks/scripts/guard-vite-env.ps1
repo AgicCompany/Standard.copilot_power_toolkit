@@ -72,7 +72,7 @@ try { $payload = $raw | ConvertFrom-Json } catch { exit 0 }
 #                          snake_case, and tool_input is a real OBJECT (no second parse).
 #   Copilot CLI docs     : { "toolName": "edit", "toolArgs": "{\"path\":...}" }
 #                          camelCase, and toolArgs is a JSON STRING (needs a second parse).
-# Confirmed live by capturing a real payload - see docs/reference/hook-payloads.md. Everything here
+# Confirmed live by capturing a real payload - see .github/docs/reference/hook-payloads.md. Everything here
 # was originally written against the CLI shape only, so no field was ever found in VS Code Chat.
 $parsedArgs = $null
 if ($payload.PSObject.Properties.Name -contains 'tool_input' -and $payload.tool_input) {

@@ -27,7 +27,7 @@ fi
 
 # Registered on BOTH sessionEnd and Stop. In VS Code Copilot Chat sessionEnd never fires but Stop
 # fires after EVERY completed turn, so without throttling a full tsc + lint would run after every
-# message. Verified live - see docs/reference/event-probe.md.
+# message. Verified live - see .github/docs/reference/event-probe.md.
 MIN_INTERVAL="${GATE_MIN_INTERVAL_SEC:-180}"
 STAMP_DIR="${GATE_LOG_DIR:-logs/copilot/build-gate}"
 STAMP_FILE="$STAMP_DIR/.last-run"
@@ -176,27 +176,29 @@ if [[ "$CONVENTION_MODE" != "off" ]]; then
     printf '       %s\n' $CN_FILES
   fi
 
-  # 3. Components with no colocated test. src/components/ui/** is shadcn CLI output, not ours.
-  if [[ -d src/components ]]; then
-    MISSING_TESTS=""
-    while IFS= read -r comp; do
-      [[ -z "$comp" ]] && continue
-      case "$comp" in
-        *.test.tsx|*.spec.tsx|*.stories.tsx) continue ;;
-        */components/ui/*) continue ;;
-      esac
-      base="${comp%.tsx}"
-      if [[ ! -f "${base}.test.tsx" ]]; then
-        MISSING_TESTS="${MISSING_TESTS}${comp}"$'\n'
-      fi
-    done < <(find src/components -type f -name '*.tsx' 2>/dev/null)
-    if [[ -n "$MISSING_TESTS" ]]; then
-      CONVENTIONS+=("component_without_test")
-      echo ""
-      echo "[WARN] component_without_test: Component(s) with no colocated .test.tsx."
-      echo "       react-ts.instructions.md lists a colocated test as part of the definition of done."
-      printf '%s' "$MISSING_TESTS" | head -10 | sed 's/^/       /'
+  # 3. Components with no colocated test: every .tsx in a components/ folder below a src/ folder,
+  #    anywhere in the repository (src/components, src/frontend/src/components, apps/web/src/components,
+  #    src/features/<f>/components). Same exclusions as checks 1-2; find does not follow symlinks.
+  #    components/ui/** is shadcn CLI output, not ours.
+  MISSING_TESTS=""
+  while IFS= read -r comp; do
+    [[ -z "$comp" ]] && continue
+    case "$comp" in
+      *.test.tsx|*.spec.tsx|*.stories.tsx) continue ;;
+      */components/ui/*) continue ;;
+    esac
+    base="${comp%.tsx}"
+    if [[ ! -f "${base}.test.tsx" ]]; then
+      MISSING_TESTS="${MISSING_TESTS}${comp}"$'\n'
     fi
+  done < <(find . \( -name node_modules -o -name .git -o -name dist -o -name build -o -name coverage \) -prune \
+             -o -type f -name '*.tsx' \( -path '*/src/components/*' -o -path '*/src/*/components/*' \) -print 2>/dev/null)
+  if [[ -n "$MISSING_TESTS" ]]; then
+    CONVENTIONS+=("component_without_test")
+    echo ""
+    echo "[WARN] component_without_test: Component(s) with no colocated .test.tsx."
+    echo "       react-ts.instructions.md lists a colocated test as part of the definition of done."
+    printf '%s' "$MISSING_TESTS" | head -10 | sed 's/^/       /'
   fi
 fi
 

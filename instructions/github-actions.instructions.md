@@ -84,7 +84,7 @@ Anything a contributor controls is untrusted: title, body, branch name, commit m
   `yarn.lock`). `actions/setup-node` with `cache: npm|pnpm|yarn` does this for you.
 - **Install exactly the lockfile in CI** — `npm ci`, `pnpm install --frozen-lockfile`,
   `yarn install --frozen-lockfile` (Yarn 1) or `yarn install --immutable` (Yarn 2+): `<pm-ci>` in
-  `docs/reference/package-managers.md`, which also says how to tell the Yarn generations apart. A plain install
+  `.github/docs/reference/package-managers.md`, which also says how to tell the Yarn generations apart. A plain install
   may resolve differently than the lockfile records; CI must fail on drift rather than silently
   install something else.
 - **Pin the runner** (`ubuntu-24.04`), not `ubuntu-latest`, when the build is sensitive to the image.

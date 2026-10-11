@@ -71,6 +71,16 @@ feature are worse than a stated gap.
   keydown, click) instead of dispatching a single synthetic event.
 - Use `screen.findBy*` (async) for anything that appears after a state update or async call; use
   `waitFor` only when there's no query that already waits for you.
+- **Lazily loaded routes need more than the 1s default wait.** `findBy*` and `waitFor` give up after
+  1000 ms. A test that renders the real router waits for a `lazy()` page that Vite transforms on first
+  use; with the whole suite running in parallel that regularly takes longer, and a *different* route
+  test fails on each run — the classic "flaky under load". Raise it once for the suite in the setup
+  file, `configure({ asyncUtilTimeout: 5000 })` from `@testing-library/react`, instead of adding
+  `{ timeout }` to individual queries. 5 s still fails fast on a real miss.
+- **Read the `test` script before telling a person to run it.** A bare `vitest` script runs **watch
+  mode** in an interactive terminal: it passes, then waits for file changes, which looks like a hang.
+  An agent's shell is not interactive, so the agent sees a one-shot run and recommends a command that
+  behaves differently for the person. Give the single-run form from [Running](#running).
 
 ## Structure
 ```typescript
@@ -145,7 +155,7 @@ So:
 
 ## Running
 Read `package.json` first and use the scripts it defines, with the lockfile's package manager
-(`docs/reference/package-managers.md`). Calling Vitest directly avoids the `--` argument quirks:
+(`.github/docs/reference/package-managers.md`). Calling Vitest directly avoids the `--` argument quirks:
 - `<pm> run test` — the project's test script (usually watch mode)
 - `<pm-exec> vitest run` — single run (CI)
 - `<pm-exec> vitest run --coverage` — coverage report

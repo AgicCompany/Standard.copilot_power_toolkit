@@ -20,11 +20,11 @@ handoffs:
   # prompt: the receiving agent checks the branch itself before its first edit.
   - label: Implement Plan
     agent: agent
-    prompt: 'Before editing anything, run `git branch --show-current`. If it prints main, master or develop, STOP: the feature branch does not exist yet - say so and go back to delivery. Otherwise implement the plan above step by step; if a step turns out to be wrong or impossible, stop and say which and why instead of improvising.'
+    prompt: 'Before editing anything, run `git branch --show-current`. If it prints main, master or develop, STOP: the feature branch does not exist yet - say so and go back to delivery. Otherwise implement the plan above step by step; if a step turns out to be wrong or impossible, stop and say which and why instead of improvising. Do not commit, push or open a pull request: that is delivery''s job, after the person has read the diff. Finish by reporting what changed and what you ran.'
     send: false
   - label: Start With Tests
     agent: tdd
-    prompt: 'Before writing any file, run `git branch --show-current`. If it prints main, master or develop, STOP: the feature branch does not exist yet - say so and go back to delivery. Otherwise write failing tests for the plan above, following the TDD cycle.'
+    prompt: 'Before writing any file, run `git branch --show-current`. If it prints main, master or develop, STOP: the feature branch does not exist yet - say so and go back to delivery. Otherwise write failing tests for the plan above, following the TDD cycle. Do not commit, push or open a pull request: that is delivery''s job, after the person has read the diff.'
     send: false
   - label: Back to Planning
     agent: plan
@@ -96,16 +96,24 @@ has to untangle it.
 Reached from `checklist` once the quality gate passes.
 
 - Push with `git push -u origin <branch>`.
-- **The plan is the PR description.** If you arrived through `plan`/`small-plan`, its Overview,
-  Requirements, Steps and Testing sections are still in context — reuse them rather than writing a
-  new summary from the diff. That is the whole point of the handoff chain preserving context.
-- Include the gate evidence from `logs/copilot/build-gate/gate.log` if the `checklist` agent reported
-  it — a PR that states "typecheck + lint clean as of <timestamp>" is reviewable; one that says
-  "all good" is not.
-- If `gh` is available: `gh pr create --base develop --head <branch> --title ... --body-file ...`.
-  **If `gh` is not installed or not authenticated, say so and print the exact command plus the
-  compare URL** — do not pretend the PR was opened.
-- Target `develop` for `feature/*`, `main` for `hotfix/*`.
+- **Write the description with the `pr-description` skill** (`.github/skills/pr-description`). If the
+  repository has a PR template, the description follows it section by section; the skill fills what
+  you can prove (issue from the branch name, what changed from the diff, checks you ran now) and
+  marks the rest `TO FILL IN`. Do not write a free-form summary instead of the template: a template
+  the team relies on, skipped by the one agent that opens PRs, is the gap this skill closes.
+- **The plan is the source for the "what" and the scope.** If you arrived through `plan`/`small-plan`,
+  its Overview, Requirements, Steps and Testing are still in context — use them inside the template's
+  sections rather than re-deriving the intent from the diff.
+- The gate evidence from `logs/copilot/build-gate/gate.log` (if `checklist` reported it) is context,
+  stated with its timestamp: it ran before the commit and records no commit. The test, lint and build
+  results in the description come from the run the `pr-description` skill makes after the final
+  commit. Running those scripts for the description is not re-judging the gate: `checklist`'s verdict
+  stands.
+- If `gh` is available: `gh pr create --repo <owner>/<repo> --base <base> --head <branch> --title ...
+  --body-file ...`, where `<base>` comes from the branch type: `develop` for `feature/*`, `main` for
+  `release/*` and `hotfix/*`. **If `gh` is not installed or not authenticated, say so and print the
+  exact command plus the compare URL** — do not pretend the PR was opened.
+- Target `develop` for `feature/*`, `main` for `release/*` and `hotfix/*` (Gitflow merges both back into `develop` afterwards).
 
 ## Confirm before anything irreversible
 

@@ -85,6 +85,14 @@ via the `/git` prompt or by attaching it manually. Keep the two in sync.
 - MINOR version for backwards-compatible functionality
 - PATCH version for backwards-compatible bug fixes
 
+## Default Branch
+
+Set `develop` as the GitHub default branch. GitHub reads PR and issue templates, `Closes #N`
+auto-closing, the base of new PRs, Dependabot's configuration and the cloud agent's hooks from the
+default branch only; with `main` as default they stay inert until the first release. `main` keeps its
+role (production, release and hotfix merges only). If a repository still has `main` as default, say
+so when it explains a missing template or an issue that did not close, rather than working around it.
+
 ## Pull Request Rules
 
 1. All changes must go through Pull Requests

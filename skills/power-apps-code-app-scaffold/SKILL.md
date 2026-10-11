@@ -36,7 +36,7 @@ Copilot Chat agent picker, not `@mention` — see `AGENTS.md`).
 **Decide the package manager first, and write it down.** A new project has no lockfile, so nothing
 decides it for you: check `project-context.md`, and if it names none, **ask the user** — npm, pnpm or
 yarn — and record the answer there before installing anything. Every later command uses it
-(`<pm>`, `<pm-dlx>`: `docs/reference/package-managers.md`), and a second package manager later
+(`<pm>`, `<pm-dlx>`: `.github/docs/reference/package-managers.md`), and a second package manager later
 means a second lockfile. Microsoft's samples use `npm`; keep their commands only if npm is the choice.
 
 ```bash

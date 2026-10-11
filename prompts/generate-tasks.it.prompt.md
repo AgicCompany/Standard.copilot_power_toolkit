@@ -50,7 +50,7 @@ La task list generata _deve_ seguire questa struttura:
 - Leggere `package.json` prima di scrivere qualsiasi comando di test, controllando sia gli script sia le dipendenze:
   - esiste uno script `test` → usarlo (`<pm> run test`);
   - nessuno script, ma `vitest` è tra le dipendenze → `<pm-exec> vitest run [percorso/opzionale/del/file/test]`;
-  - `<pm>` / `<pm-exec>`: il package manager del lockfile (`docs/reference/package-managers.md`);
+  - `<pm>` / `<pm-exec>`: il package manager del lockfile (`.github/docs/reference/package-managers.md`);
   - nessuno dei due → il progetto non ha ancora un test runner. Aggiungere un task per configurare
     Vitest + React Testing Library (lo standard di questa baseline, vedi `vitest-react-testing.instructions.md`)
     prima di qualsiasi task che dipenda dai test. Non prescrivere un comando di test che non può
