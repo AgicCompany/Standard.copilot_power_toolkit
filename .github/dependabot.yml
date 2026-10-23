@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    exclude-paths:
+      - ".github/workflows/managed-*"
+      - ".github/workflows/agentics-maintenance.yml"
+      - ".github/workflows/conventional-pr-title.yml"
+      - ".github/workflows/case-rename-policy.yml"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
