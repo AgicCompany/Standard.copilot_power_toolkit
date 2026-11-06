@@ -9,14 +9,22 @@ name: Case Rename Policy
 # DOCS/ exists). All three break checkouts on the case-insensitive filesystems
 # (Windows/macOS defaults) used across the org.
 #
-# Security: runs from the base branch's workflow definition
-# (pull_request_target) so a pull request cannot neuter its own check. The PR
-# head is fetched as git objects only — its files are never checked out to disk
-# and nothing from the PR tree is executed. Keep the token read-only: do not
-# enable modes that comment on or otherwise modify pull requests.
+# Security: checks out the base branch commit explicitly
+# (ref: github.event.pull_request.base.sha) and fetches the PR head as git
+# objects only — PR files are never checked out to disk and nothing from the PR
+# tree is executed. On private/internal repos the central immutable-workflows
+# ruleset runs this workflow from org-github-management@main and the
+# protected-workflow-paths push ruleset blocks edits to managed workflow files;
+# on public repos (where GitHub push rulesets and internal-sourced ruleset
+# workflows do not apply) fork PRs modifying .github/workflows/* require
+# maintainer approval to run Actions, the "Guard managed workflow files" step
+# below catches accidental or isolated edits (such as editing
+# conventional-pr-title.yml alone), and reconcile restores canonical workflow
+# files on main (#1192). Keep the token read-only: do not enable modes that
+# comment on or otherwise modify pull requests.
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, synchronize]
 
 permissions:
@@ -36,15 +44,36 @@ jobs:
       BASE_REF: ${{ github.event.pull_request.base.ref }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      # Default checkout under pull_request_target is the base repository —
-      # trusted content. Full history is needed for the merge-base computation.
+      # Explicitly check out the base commit — trusted content, immune to any
+      # case collision on the PR branch. Full history is needed for the
+      # merge-base computation.
       - name: Checkout base repository
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
 
       - name: Fetch PR head objects
         run: git fetch --no-tags origin "$HEAD_SHA"
+
+      # Reconcile owns the distributed PR-check workflows; pull requests in
+      # managed repositories must not modify or delete them to weaken their own
+      # required checks (#1192).
+      - name: Guard managed workflow files
+        run: |
+          merge_base="$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" \
+            || { echo "git merge-base failed — cannot evaluate the diff"; exit 1; }
+          changed="$(git diff --name-only "$merge_base" "$HEAD_SHA" -- \
+            .github/workflows/conventional-pr-title.yml \
+            .github/workflows/case-rename-policy.yml)" \
+            || { echo "git diff failed — cannot evaluate managed workflow files"; exit 1; }
+          if [[ -n "$changed" ]]; then
+            printf 'Managed workflow file modified in pull request:\n%s\n' "$changed"
+            echo "These workflow files are reconciled centrally from org-github-management" \
+              "and must not be edited in pull requests."
+            exit 1
+          fi
+          echo "Managed workflow files are unchanged."
 
       # The policy is relational — did a path's casing change between the merge
       # base and the head? — so compare folded path spellings between the two
