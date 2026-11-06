@@ -7,7 +7,7 @@ name: Conventional PR Title
 # config/defaults.yaml makes the validated title the default merge commit title.
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, edited, reopened, synchronize]
 
 permissions:
